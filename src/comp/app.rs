@@ -1,12 +1,12 @@
 use super::{Component, Event, Tree, TreeResponse};
 
 use crossterm::event::KeyCode;
+use prc::param::*;
 use tui::buffer::Buffer;
 use tui::layout::{Alignment, Constraint, Layout, Rect};
-use tui::style::{Style, Color};
+use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{TableState, Paragraph, Widget};
-use prc::param::*;
+use tui::widgets::{Paragraph, TableState, Widget};
 
 pub struct App {
     /// The owned param struct
@@ -37,7 +37,7 @@ impl App {
         }
     }
 
-    pub fn current_tree(&mut self) -> Tree { 
+    pub fn current_tree(&mut self) -> Tree {
         let mut ptr = &mut self.base;
         for route in self.route.iter() {
             match ptr {
@@ -83,16 +83,14 @@ impl Component for App {
 
         let mut tree = self.current_tree();
         match tree.handle_event(event) {
-            TreeResponse::Focus => {
-                match tree.current_param() {
-                    ParamKind::Struct(_) | ParamKind::List(_) => {
-                        let this_route = RouteInfo::new(&tree);
-                        self.route.push(this_route);
-                        self.tail = new_table();
-                    }
-                    _ => {}
+            TreeResponse::Focus => match tree.current_param() {
+                ParamKind::Struct(_) | ParamKind::List(_) => {
+                    let this_route = RouteInfo::new(&tree);
+                    self.route.push(this_route);
+                    self.tail = new_table();
                 }
-            }
+                _ => {}
+            },
             TreeResponse::Unfocus => {
                 if !self.route.is_empty() {
                     self.tail = self.route.pop().unwrap().table;
@@ -109,7 +107,10 @@ impl Component for App {
             let constraints = Layout::default()
                 .constraints(vec![Constraint::Length(1), Constraint::Percentage(100)])
                 .split(rect);
-            let mut route = vec![Span::styled(&self.route[0].name, Style::default().fg(Color::Green))];
+            let mut route = vec![Span::styled(
+                &self.route[0].name,
+                Style::default().fg(Color::Green),
+            )];
             for r in self.route[1..].iter() {
                 route.push(Span::raw(" > "));
                 route.push(Span::styled(&r.name, Style::default().fg(Color::Green)));
@@ -122,4 +123,3 @@ impl Component for App {
         }
     }
 }
-

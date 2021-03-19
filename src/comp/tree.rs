@@ -2,11 +2,11 @@ use super::{Component, Event};
 use std::cmp::max;
 
 use crossterm::event::KeyCode;
-use tui::buffer::Buffer;
-use tui::layout::{Rect, Constraint};
-use tui::style::{Style, Color};
-use tui::widgets::{StatefulWidget, Row, Table, TableState};
 use prc::param::*;
+use tui::buffer::Buffer;
+use tui::layout::{Constraint, Rect};
+use tui::style::{Color, Style};
+use tui::widgets::{Row, StatefulWidget, Table, TableState};
 
 pub struct Tree<'a, 't> {
     pub param: Backing<'a>,
@@ -15,7 +15,7 @@ pub struct Tree<'a, 't> {
 
 pub enum Backing<'a> {
     List(&'a mut ParamList),
-    Struct(&'a mut ParamStruct)
+    Struct(&'a mut ParamStruct),
 }
 
 impl<'a, 't> Tree<'a, 't> {
@@ -124,19 +124,27 @@ impl<'a, 't> Component for Tree<'a, 't> {
             .into_iter()
             .map(|i| {
                 let [ty, val] = param_info(self.param.param_at(i as usize));
-                [ self.param.name_at(i as usize), ty, val ]
+                [self.param.name_at(i as usize), ty, val]
             })
             .collect();
-        let name_len = data.iter().fold(0, |max_len, data| max(max_len, data[0].len())) as u16;
-        let type_len = data.iter().fold(0, |max_len, data| max(max_len, data[1].len())) as u16;
-        let constraints = [Constraint::Min(name_len), Constraint::Min(type_len), Constraint::Percentage(100)];
+        let name_len = data
+            .iter()
+            .fold(0, |max_len, data| max(max_len, data[0].len())) as u16;
+        let type_len = data
+            .iter()
+            .fold(0, |max_len, data| max(max_len, data[1].len())) as u16;
+        let constraints = [
+            Constraint::Min(name_len),
+            Constraint::Min(type_len),
+            Constraint::Percentage(100),
+        ];
 
         let table = Table::new(
-            data.iter().map(|info| {
-                Row::new(info.iter().map(|s| &s[..]))
-            })
-        ).widths(&constraints)
-            .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
+            data.iter()
+                .map(|info| Row::new(info.iter().map(|s| &s[..]))),
+        )
+        .widths(&constraints)
+        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
         table.render(table_area, buf, self.selection);
     }
 }
@@ -157,4 +165,3 @@ fn param_info(param: &ParamKind) -> [String; 2] {
         ParamKind::Struct(v) => ["struct".into(), format!("({} children)", v.0.len())],
     }
 }
-
