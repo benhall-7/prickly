@@ -3,7 +3,7 @@ use super::{Component, Event, Tree, TreeResponse};
 use crossterm::event::KeyCode;
 use prc::param::*;
 use tui::buffer::Buffer;
-use tui::layout::{Alignment, Constraint, Layout, Rect};
+use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Paragraph, TableState, Widget};

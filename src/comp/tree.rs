@@ -134,8 +134,8 @@ impl<'a, 't> Component for Tree<'a, 't> {
             .iter()
             .fold(0, |max_len, data| max(max_len, data[1].len())) as u16;
         let constraints = [
-            Constraint::Min(name_len),
-            Constraint::Min(type_len),
+            Constraint::Length(name_len),
+            Constraint::Length(type_len),
             Constraint::Percentage(100),
         ];
 

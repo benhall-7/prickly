@@ -1,4 +1,4 @@
-use std::io::{stdout, Cursor, Write};
+use std::io::{stdout, Cursor};
 use std::time::Duration;
 
 use crossterm::event::{poll, read, Event};
