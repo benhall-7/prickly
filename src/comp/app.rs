@@ -1,4 +1,4 @@
-use super::{Component, Event, Tree, TreeResponse};
+use super::{Component, Event, Tree, TreeResponse, Filter, FilterResponse};
 
 use crossterm::event::KeyCode;
 use prc::param::*;
@@ -11,10 +11,19 @@ use tui::widgets::{Paragraph, TableState, Widget};
 pub struct App {
     /// The owned param struct
     base: ParamKind,
+    /// The app mode
+    mode: AppMode,
     /// The current level's selection info
     tail: TableState,
     /// The past levels' selection info and param names
     route: Vec<RouteInfo>,
+    /// 
+    filter: Filter,
+}
+
+enum AppMode {
+    ParamView,
+    RegexEdit,
 }
 
 struct RouteInfo {
@@ -32,8 +41,10 @@ impl App {
     pub fn new(param: ParamKind) -> Self {
         App {
             base: param,
+            mode: AppMode::ParamView,
             tail: new_table(),
             route: vec![],
+            filter: Filter::new()
         }
     }
 
@@ -74,39 +85,52 @@ impl Component for App {
     type Response = AppResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
-        if let Event::Key(key_event) = event {
-            match key_event.code {
-                KeyCode::Esc => return AppResponse::Exit,
-                _ => {}
+        match self.mode {
+            AppMode::ParamView => {
+                let mut tree = self.current_tree();
+                match tree.handle_event(event) {
+                    TreeResponse::Focus => match tree.current_param() {
+                        ParamKind::Struct(_) | ParamKind::List(_) => {
+                            let this_route = RouteInfo::new(&tree);
+                            self.route.push(this_route);
+                            self.tail = new_table();
+                        }
+                        _ => {}
+                    },
+                    TreeResponse::Unfocus => {
+                        if !self.route.is_empty() {
+                            self.tail = self.route.pop().unwrap().table;
+                        }
+                    }
+                    TreeResponse::None => {}
+                }
+
+                // app events here
+                if let Event::Key(key_event) = event {
+                    match key_event.code {
+                        KeyCode::Char('f') => {
+                            self.mode = AppMode::RegexEdit;
+                            self.filter.focus(true);
+                        }
+                        KeyCode::Esc => return AppResponse::Exit,
+                        _ => {}
+                    }
+                }
+            }
+            AppMode::RegexEdit => match self.filter.handle_event(event) {
+                FilterResponse::Exit => {
+                    self.filter.focus(false);
+                    self.mode = AppMode::ParamView;
+                }
+                FilterResponse::None => {}
             }
         }
 
-        let mut tree = self.current_tree();
-        match tree.handle_event(event) {
-            TreeResponse::Focus => match tree.current_param() {
-                ParamKind::Struct(_) | ParamKind::List(_) => {
-                    let this_route = RouteInfo::new(&tree);
-                    self.route.push(this_route);
-                    self.tail = new_table();
-                }
-                _ => {}
-            },
-            TreeResponse::Unfocus => {
-                if !self.route.is_empty() {
-                    self.tail = self.route.pop().unwrap().table;
-                }
-            }
-            TreeResponse::None => {}
-        }
         AppResponse::None
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
-        // top bar shows the path so far
-        if !self.route.is_empty() {
-            let constraints = Layout::default()
-                .constraints(vec![Constraint::Length(1), Constraint::Percentage(100)])
-                .split(rect);
+        let route = if self.route.is_empty() { None } else {
             let mut route = vec![Span::styled(
                 &self.route[0].name,
                 Style::default().fg(Color::Green),
@@ -115,11 +139,20 @@ impl Component for App {
                 route.push(Span::raw(" > "));
                 route.push(Span::styled(&r.name, Style::default().fg(Color::Green)));
             }
-            let p = Paragraph::new(Spans::from(route));
-            p.render(constraints[0], buf);
-            self.current_tree().draw(constraints[1], buf);
-        } else {
-            self.current_tree().draw(rect, buf);
-        }
+            Some(Paragraph::new(Spans::from(route)))
+        };
+        let constraints = Layout::default()
+            .constraints(vec![
+                // route
+                Constraint::Length(route.is_some() as u16),
+                // filter
+                Constraint::Length(2),
+                // the rest filled with the param tree
+                Constraint::Percentage(100),
+            ])
+            .split(rect);
+        route.map_or((), |p| p.render(constraints[0], buf));
+        self.filter.draw(constraints[1], buf);
+        self.current_tree().draw(constraints[2], buf);
     }
 }

@@ -32,6 +32,7 @@ pub trait Component {
     fn draw(&mut self, rect: Rect, buffer: &mut Buffer);
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Event {
     Key(KeyEvent),
     Mouse(MouseEvent),
