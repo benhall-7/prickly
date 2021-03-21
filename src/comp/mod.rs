@@ -2,11 +2,13 @@ mod app;
 mod filter;
 mod input;
 mod tree;
+mod tree_data;
 
 pub use app::*;
 pub use filter::*;
 pub use input::*;
 pub use tree::*;
+pub use tree_data::*;
 
 use crossterm::event::{KeyEvent, MouseEvent};
 use tui::buffer::Buffer;
