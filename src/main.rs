@@ -29,7 +29,7 @@ fn main() -> Result<(), error::AppError> {
 
     execute!(
         stdout(),
-        SetTitle("muslici - cli midi editor"),
+        SetTitle("prickly - prc file editor"),
         EnterAlternateScreen
     )?;
     enable_raw_mode()?;

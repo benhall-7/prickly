@@ -3,23 +3,31 @@ use std::cmp::max;
 
 use crossterm::event::KeyCode;
 use prc::param::*;
+use regex::Regex;
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
-use tui::widgets::{Row, StatefulWidget, Table, TableState};
+use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
 
-pub struct Tree<'a, 't> {
-    pub param: Backing<'a>,
+pub struct Tree<'b, 't, 'r> {
+    pub param: Backing<'b>,
     pub selection: &'t mut TableState,
+    pub focused: bool,
+    pub filter: Option<&'r Regex>,
 }
 
-pub enum Backing<'a> {
-    List(&'a mut ParamList),
-    Struct(&'a mut ParamStruct),
+pub enum Backing<'b> {
+    List(&'b mut ParamList),
+    Struct(&'b mut ParamStruct),
 }
 
-impl<'a, 't> Tree<'a, 't> {
-    pub fn new(param: &'a mut ParamKind, selection: &'t mut TableState) -> Self {
+impl<'b, 't, 'r> Tree<'b, 't, 'r> {
+    pub fn new(
+        param: &'b mut ParamKind,
+        selection: &'t mut TableState,
+        focused: bool,
+        filter: Option<&'r Regex>,
+    ) -> Self {
         let backing = match param {
             ParamKind::Struct(s) => Backing::Struct(s),
             ParamKind::List(l) => Backing::List(l),
@@ -28,6 +36,8 @@ impl<'a, 't> Tree<'a, 't> {
         Tree {
             param: backing,
             selection,
+            focused,
+            filter,
         }
     }
 
@@ -49,6 +59,16 @@ impl<'a, 't> Tree<'a, 't> {
 
     fn dec(&mut self) {
         self.selection.select(Some(self.index() - 1));
+    }
+
+    fn get_table_data(&self) -> Vec<[String; 3]> {
+        if let Backing::Struct(_) = self.param {
+            if self.filter.is_some() {
+                let regex = self.filter.unwrap();
+                return self.param.into_iter().filter(|d| regex.is_match(&d[0])).collect()
+            }
+        }
+        self.param.into_iter().collect()
     }
 }
 
@@ -82,13 +102,40 @@ impl<'a> Backing<'a> {
     }
 }
 
+impl<'a, 'b> IntoIterator for &'a Backing<'b> {
+    type Item = [String; 3];
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Backing::List(l) => {
+                l.0.iter().enumerate().map(|(i, p)| {
+                    let [ty, val] = param_info(p);
+                    [format!("{}", i), ty, val]
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+            }
+            Backing::Struct(s) => {
+                s.0.iter().map(|(h, p)| {
+                    let [ty, val] = param_info(p);
+                    [format!("{}", h), ty, val]
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+            }
+        }
+    }
+}
+
 pub enum TreeResponse {
     None,
     Focus,
     Unfocus,
 }
 
-impl<'a, 't> Component for Tree<'a, 't> {
+impl<'b, 't, 'r> Component for Tree<'b, 't, 'r> {
     type Response = TreeResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
@@ -118,15 +165,21 @@ impl<'a, 't> Component for Tree<'a, 't> {
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
-        let mut table_area = rect;
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(
+                if self.focused {
+                    Style::default().fg(Color::Blue)
+                } else {
+                    Default::default()
+                }
+            )
+            .title("PARAMS");
+        let mut table_area = block.inner(rect);
         table_area.height -= 1;
-        let data: Vec<_> = (0..self.param.len() as u16)
-            .into_iter()
-            .map(|i| {
-                let [ty, val] = param_info(self.param.param_at(i as usize));
-                [self.param.name_at(i as usize), ty, val]
-            })
-            .collect();
+        
+        let data = self.get_table_data();
+        
         let name_len = data
             .iter()
             .fold(0, |max_len, data| max(max_len, data[0].len())) as u16;
@@ -144,8 +197,15 @@ impl<'a, 't> Component for Tree<'a, 't> {
                 .map(|info| Row::new(info.iter().map(|s| &s[..]))),
         )
         .widths(&constraints)
-        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White));
-        table.render(table_area, buf, self.selection);
+        .highlight_style(
+            if self.focused {
+                Style::default().bg(Color::Blue)
+            } else {
+                Default::default()
+            }
+        );
+        Widget::render(block, rect, buf);
+        StatefulWidget::render(table, table_area, buf, self.selection);
     }
 }
 

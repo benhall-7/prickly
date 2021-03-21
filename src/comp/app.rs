@@ -1,4 +1,4 @@
-use super::{Component, Event, Tree, TreeResponse, Filter, FilterResponse};
+use super::{Component, Event, Filter, FilterResponse, Tree, TreeResponse};
 
 use crossterm::event::KeyCode;
 use prc::param::*;
@@ -6,21 +6,22 @@ use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Paragraph, TableState, Widget};
+use tui::widgets::{Block, Borders, Paragraph, TableState, Widget};
 
 pub struct App {
     /// The owned param struct
     base: ParamKind,
     /// The app mode
     mode: AppMode,
-    /// The current level's selection info
+    /// Selection state on the current param
     tail: TableState,
     /// The past levels' selection info and param names
     route: Vec<RouteInfo>,
-    /// 
+    /// regex filter for the current level's param names
     filter: Filter,
 }
 
+#[derive(Debug, PartialEq)]
 enum AppMode {
     ParamView,
     RegexEdit,
@@ -44,7 +45,7 @@ impl App {
             mode: AppMode::ParamView,
             tail: new_table(),
             route: vec![],
-            filter: Filter::new()
+            filter: Filter::new(),
         }
     }
 
@@ -57,7 +58,8 @@ impl App {
                 _ => panic!("Only struct or list params can be indexed"),
             }
         }
-        Tree::new(ptr, &mut self.tail)
+        let focused = self.mode == AppMode::ParamView;
+        Tree::new(ptr, &mut self.tail, focused, self.filter.regex())
     }
 }
 
@@ -123,14 +125,16 @@ impl Component for App {
                     self.mode = AppMode::ParamView;
                 }
                 FilterResponse::None => {}
-            }
+            },
         }
 
         AppResponse::None
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
-        let route = if self.route.is_empty() { None } else {
+        let route = if self.route.is_empty() {
+            None
+        } else {
             let mut route = vec![Span::styled(
                 &self.route[0].name,
                 Style::default().fg(Color::Green),
@@ -144,14 +148,21 @@ impl Component for App {
         let constraints = Layout::default()
             .constraints(vec![
                 // route
-                Constraint::Length(route.is_some() as u16),
+                Constraint::Length(if route.is_some() { 2 } else { 0 }),
                 // filter
                 Constraint::Length(2),
                 // the rest filled with the param tree
                 Constraint::Percentage(100),
             ])
             .split(rect);
-        route.map_or((), |p| p.render(constraints[0], buf));
+        route.map_or((), |p| {
+            let block = Block::default()
+                .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                .title("ROUTE");
+            let inner = block.inner(constraints[0]);
+            block.render(constraints[0], buf);
+            p.render(inner, buf);
+        });
         self.filter.draw(constraints[1], buf);
         self.current_tree().draw(constraints[2], buf);
     }

@@ -1,15 +1,15 @@
 use super::{Component, Input, InputResponse};
-use regex::{Regex, Error};
+use regex::{Error, Regex};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
-use tui::style::{Style, Color};
+use tui::style::{Color, Style};
 use tui::widgets::{Block, Borders, Widget};
 
 #[derive(Debug)]
 pub struct Filter {
     pub input: Input,
     last_input: String,
-    regex: Result<Regex, Error>
+    regex: Result<Regex, Error>,
 }
 
 impl Filter {
@@ -25,6 +25,10 @@ impl Filter {
 
     pub fn focus(&mut self, focus: bool) {
         self.input.focused = focus;
+    }
+
+    pub fn regex(&self) -> Option<&Regex> {
+        self.regex.as_ref().ok()
     }
 }
 
@@ -61,7 +65,14 @@ impl Component for Filter {
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
-        let block = Block::default().borders(Borders::TOP).title("regex filter");
+        let block = Block::default()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_style(if self.input.focused {
+                Style::default().fg(Color::Blue)
+            } else {
+                Default::default()
+            })
+            .title("REGEX FILTER");
         let inner = block.inner(rect);
         block.render(rect, buf);
         self.input.draw(inner, buf);

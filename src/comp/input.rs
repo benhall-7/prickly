@@ -70,13 +70,10 @@ impl Component for Input {
         if self.focused {
             spans.extend(vec![
                 Span::raw("> "),
-                Span::styled(&self.value, self.text_style),
+                Span::styled(&self.value, self.editing_style),
             ]);
             if let Some(e) = &self.error {
-                spans.extend(vec![
-                    Span::raw(" "),
-                    Span::styled(e, self.error_style)
-                ]);
+                spans.extend(vec![Span::raw(" "), Span::styled(e, self.error_style)]);
             }
         } else {
             if self.error.is_some() {
@@ -89,4 +86,3 @@ impl Component for Input {
         p.render(rect, buf);
     }
 }
-
