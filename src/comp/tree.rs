@@ -157,7 +157,7 @@ impl Component for Tree {
         .highlight_style(if self.focused {
             Style::default().bg(Color::Blue)
         } else {
-            Default::default()
+            Style::default().bg(Color::DarkGray)
         });
         Widget::render(block, rect, buf);
         StatefulWidget::render(table, table_area, buf, &mut self.selection);

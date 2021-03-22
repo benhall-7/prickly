@@ -127,13 +127,17 @@ impl Component for App {
                     self.filter.focus(false);
                     self.tail.focus(true);
 
-                    let p = self.current_param();
-                    let r = self.filter.regex();
-                    let s = self.tail.table_state().clone();
-                    let i = self.tail.current_row().index;
+                    let param = self.current_param();
+                    let regex = self.filter.regex();
+                    let state = self.tail.table_state().clone();
+                    let param_index = if self.tail.is_empty() { None } else {
+                        Some(self.tail.current_row().index)
+                    };
 
-                    self.tail = Tree::new_with_state(p, r, s);
-                    self.tail.select_param_index(i);
+                    self.tail = Tree::new_with_state(param, regex, state);
+                    if let Some(i) = param_index {
+                        self.tail.select_param_index(i);
+                    }
                 }
                 FilterResponse::None => {}
             },
