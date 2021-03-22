@@ -130,7 +130,9 @@ impl Component for App {
                     let param = self.current_param();
                     let regex = self.filter.regex();
                     let state = self.tail.table_state().clone();
-                    let param_index = if self.tail.is_empty() { None } else {
+                    let param_index = if self.tail.is_empty() {
+                        None
+                    } else {
                         Some(self.tail.current_row().index)
                     };
 

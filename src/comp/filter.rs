@@ -3,6 +3,7 @@ use regex::{Error, Regex};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::style::{Color, Style};
+use tui::text::Span;
 use tui::widgets::{Block, Borders, Widget};
 
 #[derive(Debug)]
@@ -72,7 +73,10 @@ impl Component for Filter {
             } else {
                 Default::default()
             })
-            .title("REGEX FILTER");
+            .title(Span::styled(
+                "REGEX FILTER",
+                Style::default().fg(Color::White),
+            ));
         let inner = block.inner(rect);
         block.render(rect, buf);
         self.input.draw(inner, buf);

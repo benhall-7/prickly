@@ -7,6 +7,7 @@ use regex::Regex;
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
+use tui::text::Span;
 use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
 
 pub struct Tree {
@@ -127,7 +128,7 @@ impl Component for Tree {
             } else {
                 Default::default()
             })
-            .title("PARAMS");
+            .title(Span::styled("PARAMS", Style::default().fg(Color::White)));
         let mut table_area = block.inner(rect);
         table_area.height -= 1;
 
