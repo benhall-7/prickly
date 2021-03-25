@@ -37,15 +37,20 @@ fn main() -> Result<(), error::AppError> {
     t.clear().unwrap();
 
     let mut app = App::new(param);
+    let mut should_refresh = true;
 
     loop {
-        t.draw(|f| {
-            let size = f.size();
-            f.render_stateful_widget(comp::Wrapper, size, &mut app);
-        })
-        .unwrap();
+        if should_refresh {
+            t.draw(|f| {
+                let size = f.size();
+                f.render_stateful_widget(comp::Wrapper, size, &mut app);
+            })
+            .unwrap();
+            should_refresh = false;
+        }
 
-        if poll(Duration::from_millis(0)).unwrap() {
+        if poll(Duration::from_secs_f64(1.0 / 60.0)).unwrap() {
+            should_refresh = true;
             let event = read().unwrap();
             let comp_event = match event {
                 Event::Resize(..) => continue,
