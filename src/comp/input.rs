@@ -6,7 +6,7 @@ use tui::style::Style;
 use tui::text::{Span, Spans};
 use tui::widgets::{Paragraph, Widget};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 // todo: add cursor
 pub struct Input {
     pub value: String,
@@ -31,6 +31,26 @@ impl Input {
     pub fn error_style(mut self, style: Style) -> Self {
         self.error_style = style;
         self
+    }
+
+    pub fn get_spans(&self) -> Spans {
+        let mut spans = vec![];
+        if self.focused {
+            spans.extend(vec![
+                Span::raw("> "),
+                Span::styled(&self.value, self.editing_style),
+            ]);
+            if let Some(e) = &self.error {
+                spans.extend(vec![Span::raw(" "), Span::styled(e, self.error_style)]);
+            }
+        } else {
+            if self.error.is_some() {
+                spans.push(Span::styled(&self.value, self.error_style));
+            } else {
+                spans.push(Span::styled(&self.value, self.text_style));
+            }
+        }
+        spans.into()
     }
 }
 
@@ -66,23 +86,7 @@ impl Component for Input {
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
-        let mut spans = vec![];
-        if self.focused {
-            spans.extend(vec![
-                Span::raw("> "),
-                Span::styled(&self.value, self.editing_style),
-            ]);
-            if let Some(e) = &self.error {
-                spans.extend(vec![Span::raw(" "), Span::styled(e, self.error_style)]);
-            }
-        } else {
-            if self.error.is_some() {
-                spans.push(Span::styled(&self.value, self.error_style));
-            } else {
-                spans.push(Span::styled(&self.value, self.text_style));
-            }
-        }
-        let p = Paragraph::new(Spans::from(spans));
+        let p = Paragraph::new(self.get_spans());
         p.render(rect, buf);
     }
 }

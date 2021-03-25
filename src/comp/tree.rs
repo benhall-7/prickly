@@ -1,4 +1,4 @@
-use super::{Component, Event, TreeData, TreeRow};
+use super::{Component, Event, Input, InputResponse, TreeData, TreeRow};
 use std::cmp::max;
 
 use crossterm::event::KeyCode;
@@ -7,7 +7,7 @@ use regex::Regex;
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
-use tui::text::Span;
+use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
 
 pub struct Tree {
@@ -15,6 +15,7 @@ pub struct Tree {
     data: TreeData,
     selection: TableState,
     focused: bool,
+    editing: Option<Input>,
 }
 
 impl Tree {
@@ -26,6 +27,7 @@ impl Tree {
             data: TreeData::new(param).apply_filter(filter),
             selection,
             focused: true,
+            editing: None,
         }
     }
 
@@ -33,16 +35,18 @@ impl Tree {
         Tree {
             data: TreeData::new(param).apply_filter(filter),
             selection: state,
-            focused: true,
+           focused: true,
+            editing: None,
         }
     }
 
-    pub fn current_row(&self) -> &TreeRow {
-        &self.data.rows[self.index()]
+    pub fn current_row(&self) -> Option<&TreeRow> {
+        self.data.rows.get(self.index())
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.data.rows.is_empty()
+    pub fn current_row_mut(&mut self) -> Option<&mut TreeRow> {
+        let index = self.index();
+        self.data.rows.get_mut(index)
     }
 
     pub fn focus(&mut self, focus: bool) {
@@ -62,6 +66,23 @@ impl Tree {
                 .position(|r| r.index == index)
                 .unwrap_or(0),
         ));
+    }
+
+    pub fn start_editing(&mut self) {
+        let mut input = Input::default()
+            .error_style(Style::default().fg(Color::Yellow));
+        input.focused = true;
+        self.editing = Some(input)
+    }
+
+    pub fn set_editing_error(&mut self, error: Option<String>) {
+        if let Some(input) = &mut self.editing {
+            input.error = error;
+        }
+    }
+
+    pub fn finish_editing(&mut self) {
+        self.editing = None;
     }
 
     fn index(&self) -> usize {
@@ -85,39 +106,55 @@ pub enum TreeResponse {
     None,
     Focus,
     Unfocus,
+    Handled,
+    SetValue(usize, String),
 }
 
 impl Component for Tree {
     type Response = TreeResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
-        if let Event::Key(key_event) = event {
-            match key_event.code {
-                KeyCode::Up => {
-                    if self.data.rows.is_empty() {
-                        self.set_index(0);
-                    } else if self.index() == 0 {
-                        self.set_index(self.data.rows.len() - 1);
-                    } else {
-                        self.dec();
+        if self.editing.is_some() {
+            let index = self.current_row().unwrap().index;
+            let input = self.editing.as_mut().unwrap();
+            match input.handle_event(event) {
+                InputResponse::Submit => return TreeResponse::SetValue(index, input.value.clone()),
+                InputResponse::Cancel => self.editing = None,
+                InputResponse::None | InputResponse::Edited => {}
+            }
+            TreeResponse::Handled
+        } else {
+            if let Event::Key(key_event) = event {
+                match key_event.code {
+                    KeyCode::Up => {
+                        if self.data.rows.is_empty() {
+                            self.set_index(0);
+                        } else if self.index() == 0 {
+                            self.set_index(self.data.rows.len() - 1);
+                        } else {
+                            self.dec();
+                        }
+                        TreeResponse::Handled
                     }
-                }
-                KeyCode::Down => {
-                    if self.data.rows.is_empty() {
-                        self.set_index(0);
-                    } else if self.index() >= self.data.rows.len() - 1 {
-                        self.set_index(0);
-                    } else {
-                        self.inc();
+                    KeyCode::Down => {
+                        if self.data.rows.is_empty() {
+                            self.set_index(0);
+                        } else if self.index() >= self.data.rows.len() - 1 {
+                            self.set_index(0);
+                        } else {
+                            self.inc();
+                        }
+                        TreeResponse::Handled
                     }
+                    // might change these two
+                    KeyCode::Enter => TreeResponse::Focus,
+                    KeyCode::Backspace => TreeResponse::Unfocus,
+                    _ => TreeResponse::None,
                 }
-                // might change these two
-                KeyCode::Right => return TreeResponse::Focus,
-                KeyCode::Left => return TreeResponse::Unfocus,
-                _ => {}
+            } else {
+                TreeResponse::None
             }
         }
-        TreeResponse::None
     }
 
     fn draw(&mut self, rect: Rect, buf: &mut Buffer) {
@@ -126,9 +163,16 @@ impl Component for Tree {
             .border_style(if self.focused {
                 Style::default().fg(Color::Blue)
             } else {
-                Default::default()
+                Style::default()
             })
-            .title(Span::styled("PARAMS", Style::default().fg(Color::White)));
+            .title(Span::styled(
+                if let Some(_) = self.editing {
+                    "PARAMS (editing)"
+                } else {
+                    "PARAMS"
+                },
+                Style::default().fg(Color::White),
+            ));
         let mut table_area = block.inner(rect);
         table_area.height -= 1;
 
@@ -147,12 +191,25 @@ impl Component for Tree {
             Constraint::Length(type_len),
             Constraint::Percentage(100),
         ];
-
+        
+        let index = self.current_row().map(|r| r.index).unwrap_or(0);
+        let editing = self.editing.clone();
         let table = Table::new(
             self.data
                 .rows
                 .iter()
-                .map(|row| Row::new(vec![row.name.as_str(), row.kind, row.value.as_str()])),
+                .map(|row| {
+                    let value = if row.index == index && editing.is_some() {
+                        editing.as_ref().unwrap().get_spans()
+                    } else {
+                        Spans::from(row.value.as_str())
+                    };
+                    Row::new(vec![
+                             row.name.as_str().into(),
+                             row.kind.into(),
+                             value,
+                    ])
+                }),
         )
         .widths(&constraints)
         .highlight_style(if self.focused {

@@ -55,14 +55,26 @@ impl App {
                 _ => panic!("Only struct or list params can be indexed"),
             }
         }
-        &ptr
+        ptr
+    }
+
+    pub fn current_param_mut(&mut self) -> &mut ParamKind {
+        let mut ptr = &mut self.base;
+        for route in self.route.iter() {
+            match ptr {
+                ParamKind::Struct(s) => ptr = &mut s.0[route.index()].1,
+                ParamKind::List(l) => ptr = &mut l.0[route.index()],
+                _ => panic!("Only struct or list params can be indexed"),
+            }
+        }
+        ptr
     }
 }
 
 impl RouteInfo {
     pub fn new(tree: &Tree) -> Self {
         let table = tree.table_state().clone();
-        let row = tree.current_row();
+        let row = tree.current_row().unwrap();
         RouteInfo {
             table,
             index: row.index,
@@ -88,9 +100,13 @@ impl Component for App {
             AppMode::ParamView => {
                 match self.tail.handle_event(event) {
                     TreeResponse::Focus => {
-                        if !self.tail.is_empty() && self.tail.current_row().is_parent {
-                            self.route.push(RouteInfo::new(&self.tail));
-                            self.tail = Tree::new(self.current_param(), self.filter.regex());
+                        if let Some(row) = self.tail.current_row() {
+                            if row.is_parent {
+                                self.route.push(RouteInfo::new(&self.tail));
+                                self.tail = Tree::new(self.current_param(), self.filter.regex());
+                            } else {
+                               self.tail.start_editing();
+                            }
                         }
                     }
                     TreeResponse::Unfocus => {
@@ -105,20 +121,43 @@ impl Component for App {
                             self.tail.select_param_index(index);
                         }
                     }
-                    TreeResponse::None => {}
-                }
-
-                // app events here
-                if let Event::Key(key_event) = event {
-                    match key_event.code {
-                        KeyCode::Char('f') => {
-                            self.mode = AppMode::RegexEdit;
-                            self.filter.focus(true);
-                            self.tail.focus(false);
+                    TreeResponse::SetValue(index, value) => {
+                        let parent = self.current_param_mut();
+                        let child = match parent {
+                            ParamKind::Struct(s) => &mut s.0[index].1,
+                            ParamKind::List(l) => &mut l.0[index],
+                            _ => panic!("Only struct or list params can be indexed"),
+                        };
+                        macro_rules! parse {
+                            ($($param_kind:ident),*) => { match child {
+                                $(ParamKind::$param_kind(v) => match value.parse() {
+                                    Ok(value) => {
+                                        *v = value;
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.tail.finish_editing();
+                                    }
+                                    Err(_) => self.tail.set_editing_error(Some("[Parse error]".into())),
+                                })*
+                                _ => panic!("Only value type params can be set"),
+                            }}
                         }
-                        KeyCode::Esc => return AppResponse::Exit,
-                        _ => {}
+                        parse!(Bool, I8, U8, I16, U16, I32, U32, Float, Hash, Str);
                     }
+                    TreeResponse::None => {
+                        // app events here
+                        if let Event::Key(key_event) = event {
+                            match key_event.code {
+                                KeyCode::Char('/') => {
+                                    self.mode = AppMode::RegexEdit;
+                                    self.filter.focus(true);
+                                    self.tail.focus(false);
+                                }
+                                KeyCode::Esc => return AppResponse::Exit,
+                                _ => {}
+                            }
+                        }
+                    }
+                    TreeResponse::Handled => {}
                 }
             }
             AppMode::RegexEdit => match self.filter.handle_event(event) {
@@ -130,11 +169,7 @@ impl Component for App {
                     let param = self.current_param();
                     let regex = self.filter.regex();
                     let state = self.tail.table_state().clone();
-                    let param_index = if self.tail.is_empty() {
-                        None
-                    } else {
-                        Some(self.tail.current_row().index)
-                    };
+                    let param_index = self.tail.current_row().map(|r| r.index);
 
                     self.tail = Tree::new_with_state(param, regex, state);
                     if let Some(i) = param_index {
