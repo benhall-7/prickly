@@ -1,12 +1,12 @@
-use super::{Component, Event, Filter, FilterResponse, Tree, TreeResponse};
+use super::{Component, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree, TreeResponse};
 
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 use prc::param::*;
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph, TableState, Widget};
+use tui::widgets::{Block, Clear, Borders, Paragraph, TableState, Widget};
 
 pub struct App {
     /// The owned param struct
@@ -21,9 +21,10 @@ pub struct App {
     filter: Filter,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum AppMode {
     ParamView,
+    FileOpen(Explorer),
     RegexEdit,
 }
 
@@ -96,7 +97,7 @@ impl Component for App {
     type Response = AppResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
-        match self.mode {
+        match &mut self.mode {
             AppMode::ParamView => {
                 match self.tail.handle_event(event) {
                     TreeResponse::Focus => {
@@ -152,6 +153,9 @@ impl Component for App {
                                     self.filter.focus(true);
                                     self.tail.focus(false);
                                 }
+                                KeyCode::Char('o') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                                    self.mode = AppMode::FileOpen(Explorer::new("./", ExplorerMode::Open));
+                                }
                                 KeyCode::Esc => return AppResponse::Exit,
                                 _ => {}
                             }
@@ -177,6 +181,12 @@ impl Component for App {
                     }
                 }
                 FilterResponse::None => {}
+            },
+            AppMode::FileOpen(exp) => match exp.handle_event(event) {
+                ExplorerResponse::Submit(_) => todo!(),
+                ExplorerResponse::Cancel => self.mode = AppMode::ParamView,
+                ExplorerResponse::Handled => {}
+                ExplorerResponse::None => {}
             },
         }
 
@@ -217,5 +227,21 @@ impl Component for App {
         });
         self.filter.draw(constraints[1], buf);
         self.tail.draw(constraints[2], buf);
+
+        match &mut self.mode {
+            AppMode::FileOpen(exp) => {
+                let mul = 0.75;
+                let center_area = Rect {
+                    width: (mul * rect.width as f32) as u16,
+                    height: (mul * rect.height as f32) as u16,
+                    x: rect.x + ((1.0 - mul) / 2.0 * rect.width as f32) as u16,
+                    y: rect.y + ((1.0 - mul) / 2.0 * rect.height as f32) as u16,
+                };
+                let clear = Clear;
+                clear.render(center_area, buf);
+                exp.draw(center_area, buf);
+            }
+            _ => {}
+        }
     }
 }
