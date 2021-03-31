@@ -35,7 +35,7 @@ impl Tree {
         Tree {
             data: TreeData::new(param).apply_filter(filter),
             selection: state,
-           focused: true,
+            focused: true,
             editing: None,
         }
     }
@@ -69,8 +69,7 @@ impl Tree {
     }
 
     pub fn start_editing(&mut self) {
-        let mut input = Input::default()
-            .error_style(Style::default().fg(Color::Yellow));
+        let mut input = Input::default().error_style(Style::default().fg(Color::Yellow));
         input.focused = true;
         self.editing = Some(input)
     }
@@ -191,26 +190,17 @@ impl Component for Tree {
             Constraint::Length(type_len),
             Constraint::Percentage(100),
         ];
-        
+
         let index = self.current_row().map(|r| r.index).unwrap_or(0);
         let editing = self.editing.clone();
-        let table = Table::new(
-            self.data
-                .rows
-                .iter()
-                .map(|row| {
-                    let value = if row.index == index && editing.is_some() {
-                        editing.as_ref().unwrap().get_spans()
-                    } else {
-                        Spans::from(row.value.as_str())
-                    };
-                    Row::new(vec![
-                             row.name.as_str().into(),
-                             row.kind.into(),
-                             value,
-                    ])
-                }),
-        )
+        let table = Table::new(self.data.rows.iter().map(|row| {
+            let value = if row.index == index && editing.is_some() {
+                editing.as_ref().unwrap().get_spans()
+            } else {
+                Spans::from(row.value.as_str())
+            };
+            Row::new(vec![row.name.as_str().into(), row.kind.into(), value])
+        }))
         .widths(&constraints)
         .highlight_style(if self.focused {
             Style::default().bg(Color::Blue)

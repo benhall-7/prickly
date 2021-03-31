@@ -1,12 +1,18 @@
-use super::{Component, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree, TreeResponse};
+use super::{
+    Component, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree,
+    TreeResponse,
+};
+use std::env::current_dir;
+use std::fs::read;
+use std::io::Cursor;
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use prc::param::*;
+use prc::{param::*, read_stream};
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Clear, Borders, Paragraph, TableState, Widget};
+use tui::widgets::{Block, Borders, Clear, Paragraph, TableState, Widget};
 
 pub struct App {
     /// The owned param struct
@@ -106,7 +112,7 @@ impl Component for App {
                                 self.route.push(RouteInfo::new(&self.tail));
                                 self.tail = Tree::new(self.current_param(), self.filter.regex());
                             } else {
-                               self.tail.start_editing();
+                                self.tail.start_editing();
                             }
                         }
                     }
@@ -153,8 +159,13 @@ impl Component for App {
                                     self.filter.focus(true);
                                     self.tail.focus(false);
                                 }
-                                KeyCode::Char('o') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                                    self.mode = AppMode::FileOpen(Explorer::new("./", ExplorerMode::Open));
+                                KeyCode::Char('o')
+                                    if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                                {
+                                    self.mode = AppMode::FileOpen(Explorer::new(
+                                        current_dir().unwrap(),
+                                        ExplorerMode::Open,
+                                    ));
                                 }
                                 KeyCode::Esc => return AppResponse::Exit,
                                 _ => {}
@@ -183,7 +194,15 @@ impl Component for App {
                 FilterResponse::None => {}
             },
             AppMode::FileOpen(exp) => match exp.handle_event(event) {
-                ExplorerResponse::Submit(_) => todo!(),
+                ExplorerResponse::Submit(path) => {
+                    let res = read(path)
+                        .and_then(|bytes| read_stream(&mut Cursor::new(bytes)))
+                        .map(ParamKind::from);
+                    match res {
+                        Ok(param) => *self = Self::new(param),
+                        Err(_e) => { /* Log error? Display error prompt? */ }
+                    }
+                }
                 ExplorerResponse::Cancel => self.mode = AppMode::ParamView,
                 ExplorerResponse::Handled => {}
                 ExplorerResponse::None => {}

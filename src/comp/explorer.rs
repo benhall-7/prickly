@@ -1,10 +1,10 @@
 use super::{Component, Event};
 use crossterm::event::KeyCode;
-use std::fs::{Metadata, read_dir};
+use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Rect};
-use tui::style::{Style, Color};
+use tui::style::{Color, Style};
 use tui::text::Span;
 use tui::widgets::{Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
 
@@ -13,7 +13,7 @@ pub struct Explorer {
     path: PathBuf,
     files: Result<Vec<EntryInfo>, String>,
     mode: ExplorerMode,
-    state: TableState
+    state: TableState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -43,16 +43,16 @@ impl Explorer {
     }
 
     fn get_files<P: AsRef<Path>>(path: P) -> Result<Vec<EntryInfo>, String> {
-        read_dir(path)
-            .map_err(|e| format!("{}", e))
-            .map(|dir| {
-                dir.into_iter()
-                    .filter_map(|sub| sub.ok().map(|s| EntryInfo {
+        read_dir(path).map_err(|e| format!("{}", e)).map(|dir| {
+            dir.into_iter()
+                .filter_map(|sub| {
+                    sub.ok().map(|s| EntryInfo {
                         path: s.path(),
                         meta: s.metadata().unwrap(),
-                    }))
-                    .collect()
-            })
+                    })
+                })
+                .collect()
+        })
     }
 
     fn set_path<P: AsRef<Path>>(&mut self, path: P) {
@@ -101,7 +101,7 @@ pub enum ExplorerResponse {
     Submit(PathBuf),
     Cancel,
     Handled,
-    None
+    None,
 }
 
 impl Component for Explorer {
@@ -120,15 +120,22 @@ impl Component for Explorer {
                     ExplorerResponse::Handled
                 }
                 KeyCode::Enter => {
-                    // TODO: borrowing confusion here. Clone is probably not necessary
-                    let info = {
-                        let data = self.selected_path().map(|entry| (entry.path.clone(), entry.meta.is_dir()));
-                        data
-                    };
+                    let info = self
+                        .selected_path()
+                        .map(|entry| (entry.path.clone(), entry.meta.is_dir()));
                     if let Some((path, is_dir)) = info {
                         if is_dir {
                             self.set_path(path);
+                        } else {
+                            return ExplorerResponse::Submit(path);
                         }
+                    }
+                    ExplorerResponse::Handled
+                }
+                KeyCode::Backspace => {
+                    let parent = self.path.parent().map(|p| p.to_path_buf());
+                    if let Some(par) = parent {
+                        self.set_path(par.to_path_buf());
                     }
                     ExplorerResponse::Handled
                 }
@@ -145,14 +152,23 @@ impl Component for Explorer {
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Green));
         let inner = outer.inner(rect);
-        
+
         Widget::render(outer, rect, buf);
         match &self.files {
             Ok(files) => {
-                let names = files.iter().map(|p| {
-                    let string = p.path.to_string_lossy().to_string();
-                    Row::new(vec![string])
-                }).collect::<Vec<_>>();
+                let names = files
+                    .iter()
+                    .map(|p| {
+                        let string = p
+                            .path
+                            .as_path()
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .to_string();
+                        Row::new(vec![string])
+                    })
+                    .collect::<Vec<_>>();
                 let table = Table::new(names)
                     .widths(&[Constraint::Percentage(100)])
                     .highlight_style(Style::default().bg(Color::Green));
@@ -165,4 +181,3 @@ impl Component for Explorer {
         }
     }
 }
-
