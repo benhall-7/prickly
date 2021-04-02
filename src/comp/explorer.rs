@@ -56,7 +56,8 @@ impl Explorer {
     }
 
     fn set_path<P: AsRef<Path>>(&mut self, path: P) {
-        self.files = Self::get_files(path);
+        self.files = Self::get_files(&path);
+        self.path = path.as_ref().to_path_buf();
         self.state.select(Some(0));
     }
 
