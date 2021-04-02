@@ -99,7 +99,8 @@ impl Explorer {
 
 #[derive(Debug, Clone)]
 pub enum ExplorerResponse {
-    Submit(PathBuf),
+    Open(PathBuf),
+    Save(PathBuf),
     Cancel,
     Handled,
     None,
@@ -128,7 +129,7 @@ impl Component for Explorer {
                         if is_dir {
                             self.set_path(path);
                         } else {
-                            return ExplorerResponse::Submit(path);
+                            return ExplorerResponse::Open(path);
                         }
                     }
                     ExplorerResponse::Handled

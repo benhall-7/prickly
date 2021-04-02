@@ -5,6 +5,7 @@ use super::{
 use std::env::current_dir;
 use std::fs::read;
 use std::io::Cursor;
+use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use prc::{param::*, read_stream};
@@ -25,6 +26,8 @@ pub struct App {
     route: Vec<RouteInfo>,
     /// regex filter for the current level's param names
     filter: Filter,
+    open_dir: PathBuf,
+    save_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -50,7 +53,19 @@ impl App {
             tail,
             route: vec![],
             filter,
+            open_dir: current_dir().unwrap(),
+            save_dir: current_dir().unwrap(),
         }
+    }
+
+    pub fn set_param(&mut self, param: ParamKind) {
+        let filter = Filter::new();
+        let tail = Tree::new(&param, filter.regex());
+        self.base = param;
+        self.mode = AppMode::ParamView;
+        self.tail = tail;
+        self.route.clear();
+        self.filter = filter;
     }
 
     pub fn current_param(&self) -> &ParamKind {
@@ -163,8 +178,16 @@ impl Component for App {
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                 {
                                     self.mode = AppMode::FileOpen(Explorer::new(
-                                        current_dir().unwrap(),
+                                        self.open_dir.clone(),
                                         ExplorerMode::Open,
+                                    ));
+                                }
+                                KeyCode::Char('s')
+                                    if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
+                                {
+                                    self.mode = AppMode::FileOpen(Explorer::new(
+                                        self.save_dir.clone(),
+                                        ExplorerMode::Save,
                                     ));
                                 }
                                 KeyCode::Esc => return AppResponse::Exit,
@@ -194,14 +217,23 @@ impl Component for App {
                 FilterResponse::None => {}
             },
             AppMode::FileOpen(exp) => match exp.handle_event(event) {
-                ExplorerResponse::Submit(path) => {
+                ExplorerResponse::Open(path) => {
+                    if let Some(parent) = path.parent() {
+                        self.open_dir = parent.to_path_buf();
+                    }
                     let res = read(path)
                         .and_then(|bytes| read_stream(&mut Cursor::new(bytes)))
                         .map(ParamKind::from);
                     match res {
-                        Ok(param) => *self = Self::new(param),
+                        Ok(param) => self.set_param(param),
                         Err(_e) => { /* Log error? Display error prompt? */ }
                     }
+                }
+                ExplorerResponse::Save(path) => {
+                    if let Some(parent) = path.parent() {
+                        self.save_dir = parent.to_path_buf();
+                    }
+                    todo!();
                 }
                 ExplorerResponse::Cancel => self.mode = AppMode::ParamView,
                 ExplorerResponse::Handled => {}
