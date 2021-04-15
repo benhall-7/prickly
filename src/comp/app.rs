@@ -3,12 +3,10 @@ use super::{
     TreeResponse,
 };
 use std::env::current_dir;
-use std::fs::read;
-use std::io::Cursor;
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use prc::{param::*, read_stream};
+use prc::{param::*, open, save};
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
@@ -221,8 +219,7 @@ impl Component for App {
                     if let Some(parent) = path.parent() {
                         self.open_dir = parent.to_path_buf();
                     }
-                    let res = read(path)
-                        .and_then(|bytes| read_stream(&mut Cursor::new(bytes)))
+                    let res = open(path)
                         .map(ParamKind::from);
                     match res {
                         Ok(param) => self.set_param(param),
@@ -233,7 +230,10 @@ impl Component for App {
                     if let Some(parent) = path.parent() {
                         self.save_dir = parent.to_path_buf();
                     }
-                    todo!();
+                    if let Err(_e) = save(path, self.base.try_into_ref().unwrap()) {
+                        // Log error? Display error prompt?
+                    }
+                    self.mode = AppMode::ParamView
                 }
                 ExplorerResponse::Cancel => self.mode = AppMode::ParamView,
                 ExplorerResponse::Handled => {}
