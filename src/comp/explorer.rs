@@ -3,10 +3,10 @@ use super::{Component, Event, Input, InputResponse};
 use crossterm::event::KeyCode;
 use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
-use tui::{layout::{Constraint, Rect}, widgets::Clear};
+use tui::layout::{Alignment, Constraint, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
+use tui::widgets::{Block, Borders, Clear, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
 use tui::{
     buffer::Buffer,
     layout::{Direction, Layout},
@@ -323,26 +323,38 @@ impl Component for Explorer {
         }
         // overwrite box appears above everything
         if let Some((overwrite, _)) = self.confirm_overwrite {
+            let title_text = "Overwrite file?";
             let block = Block::default()
                 .title(Span::styled(
-                    "Overwrite file?",
+                    title_text,
                     Style::default())
                 )
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Yellow));
-            
-            let block_area = inner.centered(inner.scaled(0.9, 0.9));
-            let block_inner = block.inner(block_area);
+
             let text_styles = if overwrite {
                 [Style::default().fg(Color::Green), Style::default()]
             } else {
                 [Style::default(), Style::default().fg(Color::Green)]
             };
-            let p = Paragraph::new(Spans::from(vec![
+            let inside_text = Spans::from(vec![
                 Span::styled("Yes", text_styles[0]),
                 Span::raw(" / "),
                 Span::styled("No", text_styles[1]),
-            ]));
+            ]);
+            let max_width = (inside_text.width() + 2).max(title_text.len() + 2);
+            let p = Paragraph::new(inside_text)
+                .alignment(Alignment::Center);
+
+            let block_area = inner.centered(
+                Rect {
+                    x: 0,
+                    y: 0,
+                    width: max_width as u16,
+                    height: 3,
+                }
+            );
+            let block_inner = block.inner(block_area);
 
             Widget::render(Clear, block_area, buf);
             Widget::render(block, block_area, buf);
