@@ -2,11 +2,14 @@ use super::{Component, Event, Input, InputResponse};
 use crossterm::event::KeyCode;
 use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
-use tui::{buffer::Buffer, layout::{Direction, Layout}};
 use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
 use tui::text::Span;
 use tui::widgets::{Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
+use tui::{
+    buffer::Buffer,
+    layout::{Direction, Layout},
+};
 
 #[derive(Debug, Clone)]
 pub struct Explorer {
@@ -174,9 +177,12 @@ impl Component for Explorer {
                     self.input_active = false;
                     ExplorerResponse::Handled
                 }
-                InputResponse::Edited => {
+                InputResponse::Edited { deletion } => {
                     // change index to first match
                     if let Ok(files) = &self.files {
+                        if deletion {
+                            return ExplorerResponse::Handled;
+                        }
                         if let Some(index) = files.iter().position(|file| {
                             file.path
                                 .file_name()
@@ -257,9 +263,10 @@ impl Component for Explorer {
             .constraints([
                 Constraint::Length(1),
                 Constraint::Length(1),
-                Constraint::Percentage(100)
-            ]).split(inner);
-        
+                Constraint::Percentage(100),
+            ])
+            .split(inner);
+
         let p = Paragraph::new(self.path.to_string_lossy().to_string());
 
         Widget::render(outer, rect, buf);

@@ -6,7 +6,7 @@ use std::env::current_dir;
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyModifiers};
-use prc::{param::*, open, save};
+use prc::{open, param::*, save};
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
@@ -219,8 +219,7 @@ impl Component for App {
                     if let Some(parent) = path.parent() {
                         self.open_dir = parent.to_path_buf();
                     }
-                    let res = open(path)
-                        .map(ParamKind::from);
+                    let res = open(path).map(ParamKind::from);
                     match res {
                         Ok(param) => self.set_param(param),
                         Err(_e) => { /* Log error? Display error prompt? */ }

@@ -57,7 +57,7 @@ impl Input {
 #[derive(Debug)]
 pub enum InputResponse {
     None,
-    Edited,
+    Edited { deletion: bool },
     Submit,
     Cancel,
 }
@@ -70,11 +70,11 @@ impl Component for Input {
             match key_event.code {
                 KeyCode::Char(c) => {
                     self.value.push(c);
-                    InputResponse::Edited
+                    InputResponse::Edited { deletion: false }
                 }
                 KeyCode::Backspace => {
                     self.value.pop();
-                    InputResponse::Edited
+                    InputResponse::Edited { deletion: true }
                 }
                 KeyCode::Enter => InputResponse::Submit,
                 KeyCode::Esc => InputResponse::Cancel,

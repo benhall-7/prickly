@@ -119,7 +119,7 @@ impl Component for Tree {
             match input.handle_event(event) {
                 InputResponse::Submit => return TreeResponse::SetValue(index, input.value.clone()),
                 InputResponse::Cancel => self.editing = None,
-                InputResponse::None | InputResponse::Edited => {}
+                InputResponse::None | InputResponse::Edited { .. } => {}
             }
             TreeResponse::Handled
         } else {

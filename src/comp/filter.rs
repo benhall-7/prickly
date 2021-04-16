@@ -61,7 +61,7 @@ impl Component for Filter {
                 self.input.value = self.last_input.clone();
                 FilterResponse::Exit
             }
-            InputResponse::Edited | InputResponse::None => FilterResponse::None,
+            InputResponse::Edited { .. } | InputResponse::None => FilterResponse::None,
         }
     }
 
