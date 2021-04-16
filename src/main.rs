@@ -13,6 +13,7 @@ use tui::Terminal;
 
 mod comp;
 mod error;
+mod rect_ext;
 
 use comp::*;
 

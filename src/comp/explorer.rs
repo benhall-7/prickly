@@ -1,10 +1,11 @@
+use crate::rect_ext::RectExt;
 use super::{Component, Event, Input, InputResponse};
 use crossterm::event::KeyCode;
 use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
-use tui::layout::{Constraint, Rect};
+use tui::{layout::{Constraint, Rect}, widgets::Clear};
 use tui::style::{Color, Style};
-use tui::text::Span;
+use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
 use tui::{
     buffer::Buffer,
@@ -19,7 +20,7 @@ pub struct Explorer {
     files: Result<Vec<EntryInfo>, String>,
     mode: ExplorerMode,
     /// used to confirm if the user wants to overwrite an existing file
-    confirm_overwrite: Option<bool>,
+    confirm_overwrite: Option<(bool, Option<PathBuf>)>,
     table_state: TableState,
 }
 
@@ -120,16 +121,30 @@ impl Component for Explorer {
     type Response = ExplorerResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
-        if let Some(overwrite) = &mut self.confirm_overwrite {
+        if let Some((overwrite, path)) = &mut self.confirm_overwrite {
             if let Event::Key(key_event) = event {
                 match key_event.code {
                     KeyCode::Right if *overwrite => {
-                        *overwrite = true;
+                        *overwrite = false;
                         ExplorerResponse::Handled
                     }
                     KeyCode::Left if !*overwrite => {
-                        *overwrite = false;
+                        *overwrite = true;
                         ExplorerResponse::Handled
+                    }
+                    KeyCode::Backspace | KeyCode::Esc => {
+                        self.confirm_overwrite = None;
+                        ExplorerResponse::Handled
+                    }
+                    KeyCode::Enter => {
+                        if *overwrite {
+                            let p = path.take().unwrap();
+                            self.confirm_overwrite = None;
+                            ExplorerResponse::Save(p)
+                        } else {
+                            self.confirm_overwrite = None;
+                            ExplorerResponse::Handled
+                        }
                     }
                     _ => ExplorerResponse::None,
                 }
@@ -163,7 +178,13 @@ impl Component for Explorer {
                                         ExplorerResponse::Handled
                                     }
                                     None => {
-                                        ExplorerResponse::Save(self.path.join(&self.input.value))
+                                        let new_path = self.path.join(&self.input.value);
+                                        if new_path.is_file() {
+                                            self.confirm_overwrite = Some((false, Some(new_path)));
+                                            ExplorerResponse::Handled
+                                        } else {
+                                            ExplorerResponse::Save(new_path)
+                                        }
                                     }
                                 }
                             }
@@ -222,7 +243,10 @@ impl Component for Explorer {
                             } else {
                                 match self.mode {
                                     ExplorerMode::Open => return ExplorerResponse::Open(path),
-                                    ExplorerMode::Save => return ExplorerResponse::Save(path),
+                                    ExplorerMode::Save => {
+                                        self.confirm_overwrite = Some((false, Some(path)));
+                                        return ExplorerResponse::Handled
+                                    },
                                 }
                             }
                         }
@@ -296,6 +320,33 @@ impl Component for Explorer {
                 let p = Paragraph::new(Span::styled(e, Style::default().fg(Color::Red)));
                 Widget::render(p, areas[2], buf);
             }
+        }
+        // overwrite box appears above everything
+        if let Some((overwrite, _)) = self.confirm_overwrite {
+            let block = Block::default()
+                .title(Span::styled(
+                    "Overwrite file?",
+                    Style::default())
+                )
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Yellow));
+            
+            let block_area = inner.centered(inner.scaled(0.9, 0.9));
+            let block_inner = block.inner(block_area);
+            let text_styles = if overwrite {
+                [Style::default().fg(Color::Green), Style::default()]
+            } else {
+                [Style::default(), Style::default().fg(Color::Green)]
+            };
+            let p = Paragraph::new(Spans::from(vec![
+                Span::styled("Yes", text_styles[0]),
+                Span::raw(" / "),
+                Span::styled("No", text_styles[1]),
+            ]));
+
+            Widget::render(Clear, block_area, buf);
+            Widget::render(block, block_area, buf);
+            Widget::render(p, block_inner, buf);
         }
     }
 }
