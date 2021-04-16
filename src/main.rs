@@ -7,7 +7,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, SetTitle,
 };
 use prc::hash40::{read_custom_labels, set_custom_labels};
-use prc::{param::*, open};
+use prc::open;
 use structopt::StructOpt;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
@@ -21,12 +21,13 @@ use comp::*;
 
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
-    
-    let param = args.file
+
+    let param = args
+        .file
         .map(|path| open(path).unwrap())
         .unwrap_or_default()
         .into();
-    
+
     if let Ok(l) = read_custom_labels("ParamLabels.csv") {
         set_custom_labels(l.into_iter())
     }

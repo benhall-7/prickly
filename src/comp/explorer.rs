@@ -1,12 +1,14 @@
-use crate::rect_ext::RectExt;
 use super::{Component, Event, Input, InputResponse};
+use crate::rect_ext::RectExt;
 use crossterm::event::KeyCode;
 use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
 use tui::layout::{Alignment, Constraint, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Clear, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
+use tui::widgets::{
+    Block, Borders, Clear, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
+};
 use tui::{
     buffer::Buffer,
     layout::{Direction, Layout},
@@ -245,8 +247,8 @@ impl Component for Explorer {
                                     ExplorerMode::Open => return ExplorerResponse::Open(path),
                                     ExplorerMode::Save => {
                                         self.confirm_overwrite = Some((false, Some(path)));
-                                        return ExplorerResponse::Handled
-                                    },
+                                        return ExplorerResponse::Handled;
+                                    }
                                 }
                             }
                         }
@@ -325,10 +327,7 @@ impl Component for Explorer {
         if let Some((overwrite, _)) = self.confirm_overwrite {
             let title_text = "Overwrite file?";
             let block = Block::default()
-                .title(Span::styled(
-                    title_text,
-                    Style::default())
-                )
+                .title(Span::styled(title_text, Style::default()))
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Yellow));
 
@@ -343,17 +342,14 @@ impl Component for Explorer {
                 Span::styled("No", text_styles[1]),
             ]);
             let max_width = (inside_text.width() + 2).max(title_text.len() + 2);
-            let p = Paragraph::new(inside_text)
-                .alignment(Alignment::Center);
+            let p = Paragraph::new(inside_text).alignment(Alignment::Center);
 
-            let block_area = inner.centered(
-                Rect {
-                    x: 0,
-                    y: 0,
-                    width: max_width as u16,
-                    height: 3,
-                }
-            );
+            let block_area = inner.centered(Rect {
+                x: 0,
+                y: 0,
+                width: max_width as u16,
+                height: 3,
+            });
             let block_inner = block.inner(block_area);
 
             Widget::render(Clear, block_area, buf);
