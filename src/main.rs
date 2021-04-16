@@ -1,3 +1,4 @@
+use std::env::current_exe;
 use std::io::stdout;
 use std::time::Duration;
 
@@ -29,6 +30,11 @@ fn main() -> Result<(), error::AppError> {
         .into();
 
     if let Ok(l) = read_custom_labels("ParamLabels.csv") {
+        set_custom_labels(l.into_iter())
+    } else if let Some(l) = current_exe()
+        .ok()
+        .and_then(|path| read_custom_labels(path.parent().unwrap().join("ParamLabels.csv")).ok())
+    {
         set_custom_labels(l.into_iter())
     }
 

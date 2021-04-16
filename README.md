@@ -4,7 +4,7 @@ Cross-platform TUI application for editing prc files.
 
 ## Installation:
 
-- With cargo: `cargo install --git https://github.com/BenHall-7/prickly.git`
+- With cargo: `cargo install --git https://github.com/BenHall-7/prickly.git --branch main`
 
 ## Startup:
 
@@ -14,6 +14,11 @@ Possible options:
 - Set prickly to be the default program for .prc files
 - Specify the file to open from the terminal in the app arguments
 - Open the application and load the file manually with the file explorer
+
+Param labels are loaded by precedence:
+
+1. If there is a ParamLabels.csv file in the current directory
+2. If there is a ParamLabels.csv file in the application directory
 
 ## Command shortcuts:
 
