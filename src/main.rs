@@ -22,7 +22,7 @@ use comp::*;
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
     
-    let param: ParamKind = args.file
+    let param = args.file
         .map(|path| open(path).unwrap())
         .unwrap_or_default()
         .into();
