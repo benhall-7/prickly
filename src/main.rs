@@ -1,4 +1,4 @@
-use std::io::{stdout, Cursor};
+use std::io::stdout;
 use std::time::Duration;
 
 use crossterm::event::{poll, read, Event};
@@ -7,23 +7,26 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, SetTitle,
 };
 use prc::hash40::{read_custom_labels, set_custom_labels};
-use prc::{param::*, read_stream};
+use prc::{param::*, open};
+use structopt::StructOpt;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
 
+mod args;
 mod comp;
 mod error;
 mod rect_ext;
 
 use comp::*;
 
-const TEMP_PARAM: &'static [u8] = include_bytes!("fighter_param.prc");
-
 fn main() -> Result<(), error::AppError> {
-    // TODO:
-    // load param file from args
-
-    let param = ParamKind::from(read_stream(&mut Cursor::new(TEMP_PARAM)).unwrap());
+    let args = args::Args::from_args();
+    
+    let param: ParamKind = args.file
+        .map(|path| open(path).unwrap())
+        .unwrap_or_default()
+        .into();
+    
     if let Ok(l) = read_custom_labels("ParamLabels.csv") {
         set_custom_labels(l.into_iter())
     }
