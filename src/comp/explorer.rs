@@ -215,7 +215,8 @@ impl Component for Explorer {
                                 // only fails if path ends in .., so this is fine
                                 .unwrap()
                                 .to_string_lossy()
-                                .starts_with(&self.input.value)
+                                .to_lowercase()
+                                .starts_with(&self.input.value.to_lowercase())
                         }) {
                             self.table_state.select(Some(index));
                         }
@@ -306,13 +307,12 @@ impl Component for Explorer {
                 let names = files
                     .iter()
                     .map(|p| {
-                        let string = p
-                            .path
-                            .as_path()
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string();
+                        let name = p.path.as_path().file_name().unwrap().to_string_lossy();
+                        let string = if p.meta.is_dir() {
+                            format!("/ {}", name)
+                        } else {
+                            name.to_string()
+                        };
                         Row::new(vec![string])
                     })
                     .collect::<Vec<_>>();
