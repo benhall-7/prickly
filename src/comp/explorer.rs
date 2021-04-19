@@ -285,7 +285,7 @@ impl Component for Explorer {
             ExplorerMode::Save => "Save File",
         };
         let outer = Block::default()
-            .title(Span::styled(title, Style::default()))
+            .title(Span::styled(title, Style::default().fg(Color::White)))
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Green));
         let inner = outer.inner(rect);
@@ -331,7 +331,7 @@ impl Component for Explorer {
         if let Some((overwrite, _)) = self.confirm_overwrite {
             let title_text = "Overwrite file?";
             let block = Block::default()
-                .title(Span::styled(title_text, Style::default()))
+                .title(Span::styled(title_text, Style::default().fg(Color::White)))
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Yellow));
 
