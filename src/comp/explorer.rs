@@ -57,14 +57,17 @@ impl Explorer {
 
     fn get_files<P: AsRef<Path>>(path: P) -> Result<Vec<EntryInfo>, String> {
         read_dir(path).map_err(|e| format!("{}", e)).map(|dir| {
-            dir.into_iter()
+            let mut entries: Vec<EntryInfo> = dir
+                .into_iter()
                 .filter_map(|sub| {
                     sub.ok().map(|s| EntryInfo {
                         path: s.path(),
                         meta: s.metadata().unwrap(),
                     })
                 })
-                .collect()
+                .collect();
+            entries.sort_unstable_by_key(|e| e.path.file_name().unwrap().to_owned());
+            entries
         })
     }
 
