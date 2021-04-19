@@ -46,7 +46,8 @@ impl Explorer {
         table_state.select(Some(0));
         Explorer {
             path: path.as_ref().to_path_buf(),
-            input: Input::default(),
+            input: Input::default()
+                .editing_style(Style::default().bg(Color::Blue)),
             input_active: false,
             files,
             mode,
@@ -309,7 +310,7 @@ impl Component for Explorer {
                     .map(|p| {
                         let name = p.path.as_path().file_name().unwrap().to_string_lossy();
                         let string = if p.meta.is_dir() {
-                            format!("/ {}", name)
+                            format!("{} /", name)
                         } else {
                             name.to_string()
                         };
