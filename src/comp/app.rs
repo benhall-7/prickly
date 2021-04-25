@@ -280,13 +280,7 @@ impl Component for App {
 
         match &mut self.mode {
             AppMode::FileOpen(exp) => {
-                let mul = 0.75;
-                let center_area = Rect {
-                    width: (mul * rect.width as f32) as u16,
-                    height: (mul * rect.height as f32) as u16,
-                    x: rect.x + ((1.0 - mul) / 2.0 * rect.width as f32) as u16,
-                    y: rect.y + ((1.0 - mul) / 2.0 * rect.height as f32) as u16,
-                };
+                let center_area = rect.centered(rect.scaled(0.75, 0.75));
                 let clear = Clear;
                 clear.render(center_area, buf);
                 exp.draw(center_area, buf);
