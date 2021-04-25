@@ -1,7 +1,4 @@
-use super::{
-    Component, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree,
-    TreeResponse,
-};
+use super::{Component, Confirm, ConfirmResponse, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree, TreeResponse};
 use crate::rect_ext::RectExt;
 use std::env::current_dir;
 use std::path::PathBuf;
@@ -38,8 +35,8 @@ enum AppMode {
     ParamView,
     FileOpen(Explorer),
     RegexEdit,
-    ConfirmOpen(bool),
-    ConfirmExit(bool),
+    ConfirmOpen(Confirm),
+    ConfirmExit(Confirm),
 }
 
 struct RouteInfo {
@@ -105,6 +102,14 @@ impl App {
 
     pub fn save_file(&mut self) {
         self.mode = AppMode::FileOpen(Explorer::new(self.save_dir.clone(), ExplorerMode::Save));
+    }
+
+    pub fn confirm_open(&mut self) {
+        self.mode = AppMode::ConfirmOpen(Confirm::new("Unsaved changes. Confirm Open?"));
+    }
+
+    pub fn confirm_exit(&mut self) {
+        self.mode = AppMode::ConfirmExit(Confirm::new("Unsaved changes. Confirm exit?"))
     }
 }
 
@@ -172,6 +177,7 @@ impl Component for App {
                                         *v = value;
                                         self.tail.current_row_mut().unwrap().value = format!("{}", v);
                                         self.tail.finish_editing();
+                                        self.unsaved = true;
                                     }
                                     Err(_) => self.tail.set_editing_error(Some("[Parse error]".into())),
                                 })*
@@ -193,7 +199,7 @@ impl Component for App {
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                 {
                                     if self.unsaved {
-                                        self.mode = AppMode::ConfirmOpen(false);
+                                        self.confirm_open();
                                     } else {
                                         self.open_file();
                                     }
@@ -205,7 +211,7 @@ impl Component for App {
                                 }
                                 KeyCode::Esc => {
                                     if self.unsaved {
-                                        self.mode = AppMode::ConfirmExit(false);
+                                        self.confirm_exit();
                                     } else {
                                         return AppResponse::Exit;
                                     }
@@ -260,10 +266,26 @@ impl Component for App {
                 ExplorerResponse::Handled => {}
                 ExplorerResponse::None => {}
             },
-            AppMode::ConfirmOpen(yes) => {
-
+            AppMode::ConfirmOpen(confirm) => match confirm.handle_event(event) {
+                ConfirmResponse::Confirm(yes) => {
+                    if yes {
+                        self.open_file()
+                    } else {
+                        self.mode = AppMode::ParamView;
+                    }
+                }
+                _ => {}
             }
-            AppMode::ConfirmExit(yes) => {}
+            AppMode::ConfirmExit(confirm) => match confirm.handle_event(event) {
+                ConfirmResponse::Confirm(yes) => {
+                    if yes {
+                        return AppResponse::Exit;
+                    } else {
+                        self.mode = AppMode::ParamView;
+                    }
+                }
+                _ => {}
+            }
         }
 
         AppResponse::None
@@ -311,6 +333,8 @@ impl Component for App {
                 clear.render(center_area, buf);
                 exp.draw(center_area, buf);
             }
+            AppMode::ConfirmOpen(confirm) => confirm.draw(rect, buf),
+            AppMode::ConfirmExit(confirm) => confirm.draw(rect, buf),
             _ => {}
         }
     }

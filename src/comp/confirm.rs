@@ -7,11 +7,13 @@ use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 
+#[derive(Debug)]
 pub struct Confirm {
     choice: bool,
     title: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConfirmResponse {
     Confirm(bool),
     Handled,
