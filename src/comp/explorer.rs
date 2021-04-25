@@ -46,8 +46,7 @@ impl Explorer {
         table_state.select(Some(0));
         Explorer {
             path: path.as_ref().to_path_buf(),
-            input: Input::default()
-                .editing_style(Style::default().bg(Color::Blue)),
+            input: Input::default().editing_style(Style::default().bg(Color::Blue)),
             input_active: false,
             files,
             mode,

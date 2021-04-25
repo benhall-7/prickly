@@ -1,4 +1,5 @@
 mod app;
+mod confirm;
 mod explorer;
 mod filter;
 mod input;
@@ -6,6 +7,7 @@ mod tree;
 mod tree_data;
 
 pub use app::*;
+pub use confirm::*;
 pub use explorer::*;
 pub use filter::*;
 pub use input::*;

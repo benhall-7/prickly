@@ -2,6 +2,7 @@ use super::{
     Component, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree,
     TreeResponse,
 };
+use crate::rect_ext::RectExt;
 use std::env::current_dir;
 use std::path::PathBuf;
 
@@ -24,8 +25,12 @@ pub struct App {
     route: Vec<RouteInfo>,
     /// regex filter for the current level's param names
     filter: Filter,
+    /// The last directory a file was opened in
     open_dir: PathBuf,
+    /// The last directory a file was saved in
     save_dir: PathBuf,
+    /// Whether unsaved changes were made
+    unsaved: bool,
 }
 
 #[derive(Debug)]
@@ -33,6 +38,8 @@ enum AppMode {
     ParamView,
     FileOpen(Explorer),
     RegexEdit,
+    ConfirmOpen(bool),
+    ConfirmExit(bool),
 }
 
 struct RouteInfo {
@@ -53,6 +60,7 @@ impl App {
             filter,
             open_dir: current_dir().unwrap(),
             save_dir: current_dir().unwrap(),
+            unsaved: false,
         }
     }
 
@@ -64,6 +72,7 @@ impl App {
         self.tail = tail;
         self.route.clear();
         self.filter = filter;
+        self.unsaved = false;
     }
 
     pub fn current_param(&self) -> &ParamKind {
@@ -88,6 +97,14 @@ impl App {
             }
         }
         ptr
+    }
+
+    pub fn open_file(&mut self) {
+        self.mode = AppMode::FileOpen(Explorer::new(self.open_dir.clone(), ExplorerMode::Open));
+    }
+
+    pub fn save_file(&mut self) {
+        self.mode = AppMode::FileOpen(Explorer::new(self.save_dir.clone(), ExplorerMode::Save));
     }
 }
 
@@ -175,20 +192,24 @@ impl Component for App {
                                 KeyCode::Char('o')
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                 {
-                                    self.mode = AppMode::FileOpen(Explorer::new(
-                                        self.open_dir.clone(),
-                                        ExplorerMode::Open,
-                                    ));
+                                    if self.unsaved {
+                                        self.mode = AppMode::ConfirmOpen(false);
+                                    } else {
+                                        self.open_file();
+                                    }
                                 }
                                 KeyCode::Char('s')
                                     if key_event.modifiers.contains(KeyModifiers::CONTROL) =>
                                 {
-                                    self.mode = AppMode::FileOpen(Explorer::new(
-                                        self.save_dir.clone(),
-                                        ExplorerMode::Save,
-                                    ));
+                                    self.save_file();
                                 }
-                                KeyCode::Esc => return AppResponse::Exit,
+                                KeyCode::Esc => {
+                                    if self.unsaved {
+                                        self.mode = AppMode::ConfirmExit(false);
+                                    } else {
+                                        return AppResponse::Exit;
+                                    }
+                                }
                                 _ => {}
                             }
                         }
@@ -229,15 +250,20 @@ impl Component for App {
                     if let Some(parent) = path.parent() {
                         self.save_dir = parent.to_path_buf();
                     }
-                    if let Err(_e) = save(path, self.base.try_into_ref().unwrap()) {
-                        // Log error? Display error prompt?
+                    match save(path, self.base.try_into_ref().unwrap()) {
+                        Ok(()) => self.unsaved = false,
+                        Err(_e) => { /* Log error? Display error prompt? */ }
                     }
-                    self.mode = AppMode::ParamView
+                    self.mode = AppMode::ParamView;
                 }
                 ExplorerResponse::Cancel => self.mode = AppMode::ParamView,
                 ExplorerResponse::Handled => {}
                 ExplorerResponse::None => {}
             },
+            AppMode::ConfirmOpen(yes) => {
+
+            }
+            AppMode::ConfirmExit(yes) => {}
         }
 
         AppResponse::None
