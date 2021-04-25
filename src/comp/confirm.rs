@@ -7,7 +7,7 @@ use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Confirm {
     choice: bool,
     title: String,
@@ -44,7 +44,7 @@ impl Component for Confirm {
                     ConfirmResponse::Handled
                 }
                 KeyCode::Enter => ConfirmResponse::Confirm(self.choice),
-                KeyCode::Esc => ConfirmResponse::Confirm(false),
+                KeyCode::Backspace | KeyCode::Esc => ConfirmResponse::Confirm(false),
                 _ => ConfirmResponse::None,
             }
         } else {

@@ -1,13 +1,12 @@
-use super::{Component, Event, Input, InputResponse};
-use crate::rect_ext::RectExt;
+use super::{Component, Confirm, ConfirmResponse, Event, Input, InputResponse};
 use crossterm::event::KeyCode;
 use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
-use tui::layout::{Alignment, Constraint, Rect};
+use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
-use tui::text::{Span, Spans};
+use tui::text::{Span};
 use tui::widgets::{
-    Block, Borders, Clear, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
+    Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
 };
 use tui::{
     buffer::Buffer,
@@ -22,7 +21,7 @@ pub struct Explorer {
     files: Result<Vec<EntryInfo>, String>,
     mode: ExplorerMode,
     /// used to confirm if the user wants to overwrite an existing file
-    confirm_overwrite: Option<(bool, Option<PathBuf>)>,
+    confirm_overwrite: Option<(Confirm, PathBuf)>,
     table_state: TableState,
 }
 
@@ -127,35 +126,48 @@ impl Component for Explorer {
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
         if let Some((overwrite, path)) = &mut self.confirm_overwrite {
-            if let Event::Key(key_event) = event {
-                match key_event.code {
-                    KeyCode::Right if *overwrite => {
-                        *overwrite = false;
-                        ExplorerResponse::Handled
-                    }
-                    KeyCode::Left if !*overwrite => {
-                        *overwrite = true;
-                        ExplorerResponse::Handled
-                    }
-                    KeyCode::Backspace | KeyCode::Esc => {
+            match overwrite.handle_event(event) {
+                ConfirmResponse::Confirm(yes) => {
+                    if yes {
+                        let p = path.to_owned();
                         self.confirm_overwrite = None;
-                        ExplorerResponse::Handled
+                        return ExplorerResponse::Save(p)
+                    } else {
+                        self.confirm_overwrite = None;
                     }
-                    KeyCode::Enter => {
-                        if *overwrite {
-                            let p = path.take().unwrap();
-                            self.confirm_overwrite = None;
-                            ExplorerResponse::Save(p)
-                        } else {
-                            self.confirm_overwrite = None;
-                            ExplorerResponse::Handled
-                        }
-                    }
-                    _ => ExplorerResponse::None,
                 }
-            } else {
-                ExplorerResponse::None
+                _ => {}
             }
+            ExplorerResponse::Handled
+            // if let Event::Key(key_event) = event {
+            //     match key_event.code {
+            //         KeyCode::Right if *overwrite => {
+            //             *overwrite = false;
+            //             ExplorerResponse::Handled
+            //         }
+            //         KeyCode::Left if !*overwrite => {
+            //             *overwrite = true;
+            //             ExplorerResponse::Handled
+            //         }
+            //         KeyCode::Backspace | KeyCode::Esc => {
+            //             self.confirm_overwrite = None;
+            //             ExplorerResponse::Handled
+            //         }
+            //         KeyCode::Enter => {
+            //             if *overwrite {
+            //                 let p = path.take().unwrap();
+            //                 self.confirm_overwrite = None;
+            //                 ExplorerResponse::Save(p)
+            //             } else {
+            //                 self.confirm_overwrite = None;
+            //                 ExplorerResponse::Handled
+            //             }
+            //         }
+            //         _ => ExplorerResponse::None,
+            //     }
+            // } else {
+            //     ExplorerResponse::None
+            // }
         } else if self.input_active {
             match self.input.handle_event(event) {
                 InputResponse::Submit => {
@@ -185,7 +197,7 @@ impl Component for Explorer {
                                     None => {
                                         let new_path = self.path.join(&self.input.value);
                                         if new_path.is_file() {
-                                            self.confirm_overwrite = Some((false, Some(new_path)));
+                                            self.confirm_overwrite = Some((Confirm::new("Overwrite file?"), new_path));
                                             ExplorerResponse::Handled
                                         } else {
                                             ExplorerResponse::Save(new_path)
@@ -250,7 +262,7 @@ impl Component for Explorer {
                                 match self.mode {
                                     ExplorerMode::Open => return ExplorerResponse::Open(path),
                                     ExplorerMode::Save => {
-                                        self.confirm_overwrite = Some((false, Some(path)));
+                                        self.confirm_overwrite = Some((Confirm::new("Overwrite file?"), path));
                                         return ExplorerResponse::Handled;
                                     }
                                 }
@@ -327,37 +339,8 @@ impl Component for Explorer {
             }
         }
         // overwrite box appears above everything
-        if let Some((overwrite, _)) = self.confirm_overwrite {
-            let title_text = "Overwrite file?";
-            let block = Block::default()
-                .title(Span::styled(title_text, Style::default().fg(Color::White)))
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Yellow));
-
-            let text_styles = if overwrite {
-                [Style::default().fg(Color::Green), Style::default()]
-            } else {
-                [Style::default(), Style::default().fg(Color::Green)]
-            };
-            let inside_text = Spans::from(vec![
-                Span::styled("Yes", text_styles[0]),
-                Span::raw(" / "),
-                Span::styled("No", text_styles[1]),
-            ]);
-            let max_width = (inside_text.width() + 2).max(title_text.len() + 2);
-            let p = Paragraph::new(inside_text).alignment(Alignment::Center);
-
-            let block_area = inner.centered(Rect {
-                x: 0,
-                y: 0,
-                width: max_width as u16,
-                height: 3,
-            });
-            let block_inner = block.inner(block_area);
-
-            Widget::render(Clear, block_area, buf);
-            Widget::render(block, block_area, buf);
-            Widget::render(p, block_inner, buf);
+        if let Some((overwrite, _)) = &mut self.confirm_overwrite {
+            overwrite.draw(rect, buf)
         }
     }
 }
