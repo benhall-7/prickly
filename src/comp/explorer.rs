@@ -4,10 +4,8 @@ use std::fs::{read_dir, Metadata};
 use std::path::{Path, PathBuf};
 use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
-use tui::text::{Span};
-use tui::widgets::{
-    Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget,
-};
+use tui::text::Span;
+use tui::widgets::{Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState, Widget};
 use tui::{
     buffer::Buffer,
     layout::{Direction, Layout},
@@ -131,7 +129,7 @@ impl Component for Explorer {
                     if yes {
                         let p = path.to_owned();
                         self.confirm_overwrite = None;
-                        return ExplorerResponse::Save(p)
+                        return ExplorerResponse::Save(p);
                     } else {
                         self.confirm_overwrite = None;
                     }
@@ -197,7 +195,8 @@ impl Component for Explorer {
                                     None => {
                                         let new_path = self.path.join(&self.input.value);
                                         if new_path.is_file() {
-                                            self.confirm_overwrite = Some((Confirm::new("Overwrite file?"), new_path));
+                                            self.confirm_overwrite =
+                                                Some((Confirm::new("Overwrite file?"), new_path));
                                             ExplorerResponse::Handled
                                         } else {
                                             ExplorerResponse::Save(new_path)
@@ -262,7 +261,8 @@ impl Component for Explorer {
                                 match self.mode {
                                     ExplorerMode::Open => return ExplorerResponse::Open(path),
                                     ExplorerMode::Save => {
-                                        self.confirm_overwrite = Some((Confirm::new("Overwrite file?"), path));
+                                        self.confirm_overwrite =
+                                            Some((Confirm::new("Overwrite file?"), path));
                                         return ExplorerResponse::Handled;
                                     }
                                 }

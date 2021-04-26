@@ -1,4 +1,7 @@
-use super::{Component, Confirm, ConfirmResponse, Event, Explorer, ExplorerMode, ExplorerResponse, Filter, FilterResponse, Tree, TreeResponse};
+use super::{
+    Component, Confirm, ConfirmResponse, Event, Explorer, ExplorerMode, ExplorerResponse, Filter,
+    FilterResponse, Tree, TreeResponse,
+};
 use crate::rect_ext::RectExt;
 use std::env::current_dir;
 use std::path::PathBuf;
@@ -105,7 +108,7 @@ impl App {
     }
 
     pub fn confirm_open(&mut self) {
-        self.mode = AppMode::ConfirmOpen(Confirm::new("Unsaved changes. Confirm Open?"));
+        self.mode = AppMode::ConfirmOpen(Confirm::new("Unsaved changes. Confirm open?"));
     }
 
     pub fn confirm_exit(&mut self) {
@@ -275,7 +278,7 @@ impl Component for App {
                     }
                 }
                 _ => {}
-            }
+            },
             AppMode::ConfirmExit(confirm) => match confirm.handle_event(event) {
                 ConfirmResponse::Confirm(yes) => {
                     if yes {
@@ -285,7 +288,7 @@ impl Component for App {
                     }
                 }
                 _ => {}
-            }
+            },
         }
 
         AppResponse::None
