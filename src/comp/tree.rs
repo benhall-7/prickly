@@ -122,37 +122,33 @@ impl Component for Tree {
                 InputResponse::None | InputResponse::Edited { .. } => {}
             }
             TreeResponse::Handled
-        } else {
-            if let Event::Key(key_event) = event {
-                match key_event.code {
-                    KeyCode::Up => {
-                        if self.data.rows.is_empty() {
-                            self.set_index(0);
-                        } else if self.index() == 0 {
-                            self.set_index(self.data.rows.len() - 1);
-                        } else {
-                            self.dec();
-                        }
-                        TreeResponse::Handled
+        } else if let Event::Key(key_event) = event {
+            match key_event.code {
+                KeyCode::Up => {
+                    if self.data.rows.is_empty() {
+                        self.set_index(0);
+                    } else if self.index() == 0 {
+                        self.set_index(self.data.rows.len() - 1);
+                    } else {
+                        self.dec();
                     }
-                    KeyCode::Down => {
-                        if self.data.rows.is_empty() {
-                            self.set_index(0);
-                        } else if self.index() >= self.data.rows.len() - 1 {
-                            self.set_index(0);
-                        } else {
-                            self.inc();
-                        }
-                        TreeResponse::Handled
-                    }
-                    // might change these two
-                    KeyCode::Enter => TreeResponse::Focus,
-                    KeyCode::Backspace => TreeResponse::Unfocus,
-                    _ => TreeResponse::None,
+                    TreeResponse::Handled
                 }
-            } else {
-                TreeResponse::None
+                KeyCode::Down => {
+                    if self.data.rows.is_empty() || self.index() >= self.data.rows.len() - 1 {
+                        self.set_index(0);
+                    } else {
+                        self.inc();
+                    }
+                    TreeResponse::Handled
+                }
+                // might change these two
+                KeyCode::Enter => TreeResponse::Focus,
+                KeyCode::Backspace => TreeResponse::Unfocus,
+                _ => TreeResponse::None,
             }
+        } else {
+            TreeResponse::None
         }
     }
 
@@ -165,7 +161,7 @@ impl Component for Tree {
                 Style::default()
             })
             .title(Span::styled(
-                if let Some(_) = self.editing {
+                if self.editing.is_some() {
                     "PARAMS (editing)"
                 } else {
                     "PARAMS"

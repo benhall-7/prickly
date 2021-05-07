@@ -43,12 +43,10 @@ impl Input {
             if let Some(e) = &self.error {
                 spans.extend(vec![Span::raw(" "), Span::styled(e, self.error_style)]);
             }
+        } else if self.error.is_some() {
+            spans.push(Span::styled(&self.value, self.error_style));
         } else {
-            if self.error.is_some() {
-                spans.push(Span::styled(&self.value, self.error_style));
-            } else {
-                spans.push(Span::styled(&self.value, self.text_style));
-            }
+            spans.push(Span::styled(&self.value, self.text_style));
         }
         spans.into()
     }

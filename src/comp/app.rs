@@ -36,7 +36,7 @@ pub struct App {
 #[derive(Debug)]
 enum AppMode {
     ParamView,
-    FileOpen(Explorer),
+    FileOpen(Box<Explorer>),
     RegexEdit,
     ConfirmOpen(Confirm),
     ConfirmExit(Confirm),
@@ -100,11 +100,11 @@ impl App {
     }
 
     pub fn open_file(&mut self) {
-        self.mode = AppMode::FileOpen(Explorer::new(self.open_dir.clone(), ExplorerMode::Open));
+        self.mode = AppMode::FileOpen(Box::new(Explorer::new(self.open_dir.clone(), ExplorerMode::Open)));
     }
 
     pub fn save_file(&mut self) {
-        self.mode = AppMode::FileOpen(Explorer::new(self.save_dir.clone(), ExplorerMode::Save));
+        self.mode = AppMode::FileOpen(Box::new(Explorer::new(self.save_dir.clone(), ExplorerMode::Save)));
     }
 
     pub fn confirm_open(&mut self) {
@@ -269,25 +269,19 @@ impl Component for App {
                 ExplorerResponse::Handled => {}
                 ExplorerResponse::None => {}
             },
-            AppMode::ConfirmOpen(confirm) => match confirm.handle_event(event) {
-                ConfirmResponse::Confirm(yes) => {
-                    if yes {
-                        self.open_file()
-                    } else {
-                        self.mode = AppMode::ParamView;
-                    }
+            AppMode::ConfirmOpen(confirm) => if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
+                if yes {
+                    self.open_file()
+                } else {
+                    self.mode = AppMode::ParamView;
                 }
-                _ => {}
             },
-            AppMode::ConfirmExit(confirm) => match confirm.handle_event(event) {
-                ConfirmResponse::Confirm(yes) => {
-                    if yes {
-                        return AppResponse::Exit;
-                    } else {
-                        self.mode = AppMode::ParamView;
-                    }
+            AppMode::ConfirmExit(confirm) => if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
+                if yes {
+                    return AppResponse::Exit;
+                } else {
+                    self.mode = AppMode::ParamView;
                 }
-                _ => {}
             },
         }
 

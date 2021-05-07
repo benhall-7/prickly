@@ -124,17 +124,14 @@ impl Component for Explorer {
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
         if let Some((overwrite, path)) = &mut self.confirm_overwrite {
-            match overwrite.handle_event(event) {
-                ConfirmResponse::Confirm(yes) => {
-                    if yes {
-                        let p = path.to_owned();
-                        self.confirm_overwrite = None;
-                        return ExplorerResponse::Save(p);
-                    } else {
-                        self.confirm_overwrite = None;
-                    }
+            if let ConfirmResponse::Confirm(yes) = overwrite.handle_event(event) {
+                if yes {
+                    let p = path.to_owned();
+                    self.confirm_overwrite = None;
+                    return ExplorerResponse::Save(p);
+                } else {
+                    self.confirm_overwrite = None;
                 }
-                _ => {}
             }
             ExplorerResponse::Handled
             // if let Event::Key(key_event) = event {
@@ -183,7 +180,7 @@ impl Component for Explorer {
                                     .iter()
                                     .find(|f| {
                                         f.path.file_name().unwrap().to_string_lossy().as_ref()
-                                            == &self.input.value
+                                            == self.input.value
                                     })
                                     .and_then(|f| if f.meta.is_dir() { Some(f) } else { None });
                                 match possible_folder {
@@ -238,54 +235,52 @@ impl Component for Explorer {
                 }
                 InputResponse::None => ExplorerResponse::None,
             }
-        } else {
-            if let Event::Key(key_event) = event {
-                match key_event.code {
-                    KeyCode::Esc => ExplorerResponse::Cancel,
-                    KeyCode::Up => {
-                        self.decrement();
-                        ExplorerResponse::Handled
-                    }
-                    KeyCode::Down => {
-                        self.increment();
-                        ExplorerResponse::Handled
-                    }
-                    KeyCode::Enter => {
-                        let info = self
-                            .selected_path()
-                            .map(|entry| (entry.path.clone(), entry.meta.is_dir()));
-                        if let Some((path, is_dir)) = info {
-                            if is_dir {
-                                self.set_path(path);
-                            } else {
-                                match self.mode {
-                                    ExplorerMode::Open => return ExplorerResponse::Open(path),
-                                    ExplorerMode::Save => {
-                                        self.confirm_overwrite =
-                                            Some((Confirm::new("Overwrite file?"), path));
-                                        return ExplorerResponse::Handled;
-                                    }
+        } else if let Event::Key(key_event) = event {
+            match key_event.code {
+                KeyCode::Esc => ExplorerResponse::Cancel,
+                KeyCode::Up => {
+                    self.decrement();
+                    ExplorerResponse::Handled
+                }
+                KeyCode::Down => {
+                    self.increment();
+                    ExplorerResponse::Handled
+                }
+                KeyCode::Enter => {
+                    let info = self
+                        .selected_path()
+                        .map(|entry| (entry.path.clone(), entry.meta.is_dir()));
+                    if let Some((path, is_dir)) = info {
+                        if is_dir {
+                            self.set_path(path);
+                        } else {
+                            match self.mode {
+                                ExplorerMode::Open => return ExplorerResponse::Open(path),
+                                ExplorerMode::Save => {
+                                    self.confirm_overwrite =
+                                        Some((Confirm::new("Overwrite file?"), path));
+                                    return ExplorerResponse::Handled;
                                 }
                             }
                         }
-                        ExplorerResponse::Handled
                     }
-                    KeyCode::Backspace => {
-                        let parent = self.path.parent().map(|p| p.to_path_buf());
-                        if let Some(par) = parent {
-                            self.set_path(par.to_path_buf());
-                        }
-                        ExplorerResponse::Handled
-                    }
-                    KeyCode::Char('/') => {
-                        self.input_active = true;
-                        ExplorerResponse::Handled
-                    }
-                    _ => ExplorerResponse::None,
+                    ExplorerResponse::Handled
                 }
-            } else {
-                ExplorerResponse::None
+                KeyCode::Backspace => {
+                    let parent = self.path.parent().map(|p| p.to_path_buf());
+                    if let Some(par) = parent {
+                        self.set_path(par);
+                    }
+                    ExplorerResponse::Handled
+                }
+                KeyCode::Char('/') => {
+                    self.input_active = true;
+                    ExplorerResponse::Handled
+                }
+                _ => ExplorerResponse::None,
             }
+        } else {
+            ExplorerResponse::None
         }
     }
 

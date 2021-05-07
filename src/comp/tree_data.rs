@@ -99,15 +99,12 @@ fn get_value(param: &ParamKind) -> String {
         ParamKind::U32(v) => format!("{}", v),
         ParamKind::Float(v) => format!("{}", v),
         ParamKind::Hash(v) => format!("{}", v),
-        ParamKind::Str(v) => format!("{}", v),
+        ParamKind::Str(v) => v.to_string(),
         ParamKind::List(v) => format!("({} children)", v.0.len()),
         ParamKind::Struct(v) => format!("({} children)", v.0.len()),
     }
 }
 
 fn is_parent(param: &ParamKind) -> bool {
-    match param {
-        ParamKind::Struct(_) | ParamKind::List(_) => true,
-        _ => false,
-    }
+    matches!(param, ParamKind::Struct(_) | ParamKind::List(_))
 }
