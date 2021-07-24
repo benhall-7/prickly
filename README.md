@@ -4,7 +4,7 @@ Cross-platform TUI application for editing prc files.
 
 ## Installation:
 
-Install to PATH automaticallay with cargo:
+Install to PATH automatically with cargo:
 
 `cargo install --git https://github.com/BenHall-7/prickly.git --branch main`
 
