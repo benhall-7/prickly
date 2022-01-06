@@ -7,6 +7,7 @@ use std::env::current_dir;
 use std::path::PathBuf;
 
 use crossterm::event::{KeyCode, KeyModifiers};
+use itertools::Itertools;
 use prc::{open, param::*, save};
 use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
@@ -100,11 +101,17 @@ impl App {
     }
 
     pub fn open_file(&mut self) {
-        self.mode = AppMode::FileOpen(Box::new(Explorer::new(self.open_dir.clone(), ExplorerMode::Open)));
+        self.mode = AppMode::FileOpen(Box::new(Explorer::new(
+            self.open_dir.clone(),
+            ExplorerMode::Open,
+        )));
     }
 
     pub fn save_file(&mut self) {
-        self.mode = AppMode::FileOpen(Box::new(Explorer::new(self.save_dir.clone(), ExplorerMode::Save)));
+        self.mode = AppMode::FileOpen(Box::new(Explorer::new(
+            self.save_dir.clone(),
+            ExplorerMode::Save,
+        )));
     }
 
     pub fn confirm_open(&mut self) {
@@ -269,20 +276,24 @@ impl Component for App {
                 ExplorerResponse::Handled => {}
                 ExplorerResponse::None => {}
             },
-            AppMode::ConfirmOpen(confirm) => if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
-                if yes {
-                    self.open_file()
-                } else {
-                    self.mode = AppMode::ParamView;
+            AppMode::ConfirmOpen(confirm) => {
+                if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
+                    if yes {
+                        self.open_file()
+                    } else {
+                        self.mode = AppMode::ParamView;
+                    }
                 }
-            },
-            AppMode::ConfirmExit(confirm) => if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
-                if yes {
-                    return AppResponse::Exit;
-                } else {
-                    self.mode = AppMode::ParamView;
+            }
+            AppMode::ConfirmExit(confirm) => {
+                if let ConfirmResponse::Confirm(yes) = confirm.handle_event(event) {
+                    if yes {
+                        return AppResponse::Exit;
+                    } else {
+                        self.mode = AppMode::ParamView;
+                    }
                 }
-            },
+            }
         }
 
         AppResponse::None
@@ -292,14 +303,13 @@ impl Component for App {
         let route = if self.route.is_empty() {
             None
         } else {
-            let mut route = vec![Span::styled(
-                &self.route[0].name,
-                Style::default().fg(Color::Green),
-            )];
-            for r in self.route[1..].iter() {
-                route.push(Span::raw(" > "));
-                route.push(Span::styled(&r.name, Style::default().fg(Color::Green)));
-            }
+            let route = Itertools::intersperse(
+                self.route
+                    .iter()
+                    .map(|path| Span::styled(&path.name, Style::default().fg(Color::Green))),
+                Span::raw(" > "),
+            )
+            .collect::<Vec<_>>();
             Some(Paragraph::new(Spans::from(route)))
         };
         let constraints = Layout::default()
