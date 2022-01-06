@@ -104,9 +104,7 @@ impl Explorer {
         let index = self.index();
         self.files
             .as_ref()
-            .ok()
-            .map(|files| files.get(index))
-            .flatten()
+            .ok().and_then(|files| files.get(index))
     }
 }
 
