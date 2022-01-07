@@ -37,7 +37,7 @@ pub struct App {
 #[derive(Debug)]
 enum AppMode {
     ParamView,
-    FileOpen(Box<Explorer>),
+    FileOpen(Explorer),
     RegexEdit,
     ConfirmOpen(Confirm),
     ConfirmExit(Confirm),
@@ -101,17 +101,11 @@ impl App {
     }
 
     pub fn open_file(&mut self) {
-        self.mode = AppMode::FileOpen(Box::new(Explorer::new(
-            self.open_dir.clone(),
-            ExplorerMode::Open,
-        )));
+        self.mode = AppMode::FileOpen(Explorer::new(self.open_dir.clone(), ExplorerMode::Open));
     }
 
     pub fn save_file(&mut self) {
-        self.mode = AppMode::FileOpen(Box::new(Explorer::new(
-            self.save_dir.clone(),
-            ExplorerMode::Save,
-        )));
+        self.mode = AppMode::FileOpen(Explorer::new(self.save_dir.clone(), ExplorerMode::Save));
     }
 
     pub fn confirm_open(&mut self) {
