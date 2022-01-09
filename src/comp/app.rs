@@ -1,6 +1,4 @@
-use super::{
-    Filter, FilterResponse, Tree, TreeResponse,
-};
+use super::{Filter, FilterResponse, Tree, TreeResponse};
 use std::env::current_dir;
 use std::path::PathBuf;
 
@@ -12,10 +10,9 @@ use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Clear, Paragraph, TableState, Widget};
-use tui_components::rect_ext::RectExt;
-use tui_components::{crossterm, tui};
-use tui_components::*;
 use tui_components::components::*;
+use tui_components::rect_ext::RectExt;
+use tui_components::*;
 
 pub struct App {
     /// The owned param struct
@@ -135,15 +132,8 @@ impl RouteInfo {
     }
 }
 
-pub enum AppResponse {
-    None,
-    Exit,
-}
-
-impl Component for App {
-    type Response = AppResponse;
-
-    fn handle_event(&mut self, event: Event) -> Self::Response {
+impl tui_components::App for App {
+    fn handle_event(&mut self, event: Event) -> tui_components::AppResponse {
         match &mut self.mode {
             AppMode::ParamView => {
                 match self.tail.handle_event(event) {
