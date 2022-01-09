@@ -1,10 +1,11 @@
-use super::{Component, Input, InputResponse};
 use regex::{Error, Regex};
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::style::{Color, Style};
 use tui::text::Span;
 use tui::widgets::{Block, Borders, Widget};
+use tui_components::components::*;
+use tui_components::{tui, Component, Event};
 
 #[derive(Debug)]
 pub struct Filter {
@@ -41,7 +42,7 @@ pub enum FilterResponse {
 impl Component for Filter {
     type Response = FilterResponse;
 
-    fn handle_event(&mut self, event: super::Event) -> Self::Response {
+    fn handle_event(&mut self, event: Event) -> Self::Response {
         match self.input.handle_event(event) {
             InputResponse::Submit => {
                 self.regex = Regex::new(&self.input.value);

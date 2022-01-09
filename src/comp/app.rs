@@ -1,8 +1,6 @@
 use super::{
-    Component, Confirm, ConfirmResponse, Event, Explorer, ExplorerMode, ExplorerResponse, Filter,
-    FilterResponse, Tree, TreeResponse,
+    Filter, FilterResponse, Tree, TreeResponse,
 };
-use crate::rect_ext::RectExt;
 use std::env::current_dir;
 use std::path::PathBuf;
 
@@ -14,6 +12,10 @@ use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Clear, Paragraph, TableState, Widget};
+use tui_components::rect_ext::RectExt;
+use tui_components::{crossterm, tui};
+use tui_components::*;
+use tui_components::components::*;
 
 pub struct App {
     /// The owned param struct

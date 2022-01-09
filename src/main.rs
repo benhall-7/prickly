@@ -12,11 +12,12 @@ use prc::open;
 use structopt::StructOpt;
 use tui::backend::CrosstermBackend;
 use tui::Terminal;
+use tui_components::Component;
+use tui_components::{crossterm, tui};
 
 mod args;
 mod comp;
 mod error;
-mod rect_ext;
 
 use comp::*;
 
@@ -54,7 +55,7 @@ fn main() -> Result<(), error::AppError> {
         if should_refresh {
             t.draw(|f| {
                 let size = f.size();
-                f.render_stateful_widget(comp::Wrapper, size, &mut app);
+                f.render_widget(tui_components::Wrapper(&mut app), size);
             })
             .unwrap();
             should_refresh = false;
@@ -65,8 +66,8 @@ fn main() -> Result<(), error::AppError> {
             let event = read().unwrap();
             let comp_event = match event {
                 Event::Resize(..) => continue,
-                Event::Mouse(m) => comp::Event::Mouse(m),
-                Event::Key(k) => comp::Event::Key(k),
+                Event::Mouse(m) => tui_components::Event::Mouse(m),
+                Event::Key(k) => tui_components::Event::Key(k),
             };
             match app.handle_event(comp_event) {
                 AppResponse::Exit => break,

@@ -1,4 +1,5 @@
 use crossterm::ErrorKind;
+use tui_components::crossterm;
 
 #[derive(Debug)]
 pub enum AppError {

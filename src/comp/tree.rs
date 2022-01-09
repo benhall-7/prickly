@@ -1,4 +1,4 @@
-use super::{Component, Event, Input, InputResponse, TreeData, TreeRow};
+use super::{TreeData, TreeRow};
 use std::cmp::max;
 
 use crossterm::event::KeyCode;
@@ -9,6 +9,8 @@ use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
+use tui_components::{crossterm, tui, Component, Event};
+use tui_components::components::*;
 
 pub struct Tree {
     // when we update our regex filter, we have to manually update this too
