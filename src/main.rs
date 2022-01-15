@@ -30,8 +30,6 @@ fn main() -> Result<(), error::AppError> {
 
     let mut app = App::new(param);
 
-    Ok(tui_components::run(
-        &mut app,
-        Some("prickly - prc file editor".to_string()),
-    )?)
+    tui_components::run(&mut app, Some("prickly - prc file editor".to_string()))?;
+    Ok(())
 }

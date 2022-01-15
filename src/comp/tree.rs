@@ -9,8 +9,8 @@ use tui::layout::{Constraint, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
-use tui_components::{crossterm, tui, Component, Event};
 use tui_components::components::*;
+use tui_components::{crossterm, tui, Component, Event};
 
 pub struct Tree {
     // when we update our regex filter, we have to manually update this too
@@ -95,11 +95,21 @@ impl Tree {
     }
 
     fn inc(&mut self) {
-        self.selection.select(Some(self.index() + 1));
+        if self.data.rows.is_empty() || self.index() >= self.data.rows.len() - 1 {
+            self.set_index(0);
+        } else {
+            self.selection.select(Some(self.index() + 1));
+        }
     }
 
     fn dec(&mut self) {
-        self.selection.select(Some(self.index() - 1));
+        if self.data.rows.is_empty() {
+            self.set_index(0);
+        } else if self.index() == 0 {
+            self.set_index(self.data.rows.len() - 1);
+        } else {
+            self.selection.select(Some(self.index() - 1));
+        }
     }
 }
 
@@ -127,21 +137,11 @@ impl Component for Tree {
         } else if let Event::Key(key_event) = event {
             match key_event.code {
                 KeyCode::Up => {
-                    if self.data.rows.is_empty() {
-                        self.set_index(0);
-                    } else if self.index() == 0 {
-                        self.set_index(self.data.rows.len() - 1);
-                    } else {
-                        self.dec();
-                    }
+                    self.dec();
                     TreeResponse::Handled
                 }
                 KeyCode::Down => {
-                    if self.data.rows.is_empty() || self.index() >= self.data.rows.len() - 1 {
-                        self.set_index(0);
-                    } else {
-                        self.inc();
-                    }
+                    self.inc();
                     TreeResponse::Handled
                 }
                 // might change these two
