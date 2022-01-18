@@ -1,4 +1,6 @@
-use super::{TreeData, TreeRow};
+pub mod tree_data;
+
+use tree_data::{TreeData, TreeRow};
 use std::cmp::max;
 
 use crossterm::event::KeyCode;
@@ -19,6 +21,11 @@ pub struct Tree {
     focused: bool,
     editing: Option<Input>,
 }
+
+// pub enum Editor {
+//     String(Input),
+
+// }
 
 impl Tree {
     pub fn new(param: &ParamKind, filter: Option<&Regex>) -> Self {
