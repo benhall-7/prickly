@@ -200,11 +200,11 @@ impl Component for Tree {
             .rows
             .iter()
             .fold(0, |max_len, row| max(max_len, row.name.len())) as u16;
-        let type_len = self
-            .data
-            .rows
-            .iter()
-            .fold(0, |max_len, row| max(max_len, row.kind.len())) as u16;
+        let type_len =
+            self.data
+                .rows
+                .iter()
+                .fold(0, |max_len, row| max(max_len, row.kind.as_str().len())) as u16;
         let constraints = [
             Constraint::Length(name_len),
             Constraint::Length(type_len),
@@ -219,7 +219,11 @@ impl Component for Tree {
             } else {
                 Spans::from(row.value.as_str())
             };
-            Row::new(vec![row.name.as_str().into(), row.kind.into(), value])
+            Row::new(vec![
+                row.name.as_str().into(),
+                row.kind.as_str().into(),
+                value,
+            ])
         }))
         .widths(&constraints)
         .highlight_style(if self.focused {

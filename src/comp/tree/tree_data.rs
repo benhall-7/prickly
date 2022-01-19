@@ -17,9 +17,25 @@ pub enum TreeKind {
 pub struct TreeRow {
     pub index: usize,
     pub name: String,
-    pub kind: &'static str,
+    pub kind: RowKind,
     pub value: String,
     pub is_parent: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RowKind {
+    Bool,
+    I8,
+    U8,
+    I16,
+    U16,
+    I32,
+    U32,
+    Float,
+    Hash,
+    Str,
+    List,
+    Struct,
 }
 
 impl TreeData {
@@ -71,20 +87,39 @@ impl TreeData {
     }
 }
 
-fn get_kind(param: &ParamKind) -> &'static str {
+fn get_kind(param: &ParamKind) -> RowKind {
     match param {
-        ParamKind::Bool(_) => "bool",
-        ParamKind::I8(_) => "i8",
-        ParamKind::U8(_) => "u8",
-        ParamKind::I16(_) => "i16",
-        ParamKind::U16(_) => "u16",
-        ParamKind::I32(_) => "i32",
-        ParamKind::U32(_) => "u32",
-        ParamKind::Float(_) => "f32",
-        ParamKind::Hash(_) => "hash",
-        ParamKind::Str(_) => "string",
-        ParamKind::List(_) => "list",
-        ParamKind::Struct(_) => "struct",
+        ParamKind::Bool(_) => RowKind::Bool,
+        ParamKind::I8(_) => RowKind::I8,
+        ParamKind::U8(_) => RowKind::U8,
+        ParamKind::I16(_) => RowKind::I16,
+        ParamKind::U16(_) => RowKind::U16,
+        ParamKind::I32(_) => RowKind::I32,
+        ParamKind::U32(_) => RowKind::U32,
+        ParamKind::Float(_) => RowKind::Float,
+        ParamKind::Hash(_) => RowKind::Hash,
+        ParamKind::Str(_) => RowKind::Str,
+        ParamKind::List(_) => RowKind::List,
+        ParamKind::Struct(_) => RowKind::Struct,
+    }
+}
+
+impl RowKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RowKind::Bool => "bool",
+            RowKind::I8 => "i8",
+            RowKind::U8 => "u8",
+            RowKind::I16 => "i16",
+            RowKind::U16 => "u16",
+            RowKind::I32 => "i32",
+            RowKind::U32 => "u32",
+            RowKind::Float => "f32",
+            RowKind::Hash => "hash",
+            RowKind::Str => "string",
+            RowKind::List => "list",
+            RowKind::Struct => "struct",
+        }
     }
 }
 
