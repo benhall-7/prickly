@@ -1,7 +1,7 @@
 pub mod tree_data;
 
-use tree_data::{TreeData, TreeRow};
 use std::cmp::max;
+use tree_data::{TreeData, TreeRow};
 
 use crossterm::event::KeyCode;
 use prc::param::*;
@@ -22,10 +22,10 @@ pub struct Tree {
     editing: Option<Input>,
 }
 
-// pub enum Editor {
-//     String(Input),
-
-// }
+pub struct EditingData<'a> {
+    input: &'a mut Input,
+    param_index: usize,
+}
 
 impl Tree {
     pub fn new(param: &ParamKind, filter: Option<&Regex>) -> Self {
@@ -93,8 +93,23 @@ impl Tree {
         self.editing = None;
     }
 
+    /// Returns information about the currently active editor, if any.
+    /// When returning Some, it contains a mutable reference to the Input,
+    /// as well as the index of the param being edited
+    fn editing_data(&mut self) -> Option<EditingData> {
+        let param_index = self.param_index();
+        self.editing
+            .as_mut()
+            .zip(param_index)
+            .map(|(input, param_index)| EditingData { input, param_index })
+    }
+
     fn index(&self) -> usize {
-        self.selection.selected().unwrap()
+        self.selection.selected().unwrap_or(0)
+    }
+
+    fn param_index(&self) -> Option<usize> {
+        self.current_row().map(|row| row.index)
     }
 
     fn set_index(&mut self, new: usize) {
@@ -132,11 +147,11 @@ impl Component for Tree {
     type Response = TreeResponse;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
-        if self.editing.is_some() {
-            let index = self.current_row().unwrap().index;
-            let input = self.editing.as_mut().unwrap();
+        if let Some(EditingData { input, param_index }) = self.editing_data() {
             match input.handle_event(event) {
-                InputResponse::Submit => return TreeResponse::SetValue(index, input.value.clone()),
+                InputResponse::Submit => {
+                    return TreeResponse::SetValue(param_index, input.value.clone())
+                }
                 InputResponse::Cancel => self.editing = None,
                 InputResponse::None | InputResponse::Edited { .. } => {}
             }
