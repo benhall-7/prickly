@@ -8,7 +8,7 @@ Install to PATH automatically with cargo:
 
 `cargo install --git https://github.com/BenHall-7/prickly.git --branch main`
 
-If wanted, one can clone and build the repository with the same link, then move the application to a folder of their choice.
+If you prefer to choose the installation folder, you can clone and build the repository with the same link, then move the application to a folder of your choice.
 
 ## Startup:
 
@@ -34,3 +34,5 @@ Possible options:
 - `Esc`: Exit the given prompt (param viewer, file explorer, inputs, etc)
 - `/`: Begin typing a filter for params, or search for a file in the file explorer
   - NOTE: If the file explorer is in saving mode, pressing `Enter` will attempt to save with the given name
+- `+`: Increment a value by 1 (integers and floats). Bools are inverted.
+- `-`: Decrement a value by 1 (integers and floats). Bools are inverted.
