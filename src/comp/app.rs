@@ -183,13 +183,19 @@ impl tui_components::App for App {
                             ($($param_kind:ident),*) => {
                                 match child {
                                     $(ParamKind::$param_kind(v) => {
-                                        *v = v.saturating_add(1)
+                                        *v = v.saturating_add(1);
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     })*
                                     ParamKind::Float(v) => {
                                         *v += 1.0;
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     }
                                     ParamKind::Bool(v) => {
-                                        *v = !*v
+                                        *v = !*v;
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     },
                                     _ => {}
                                 }
@@ -203,13 +209,19 @@ impl tui_components::App for App {
                             ($($param_kind:ident),*) => {
                                 match child {
                                     $(ParamKind::$param_kind(v) => {
-                                        *v = v.saturating_sub(1)
+                                        *v = v.saturating_sub(1);
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     })*
                                     ParamKind::Float(v) => {
                                         *v -= 1.0;
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     }
                                     ParamKind::Bool(v) => {
-                                        *v = !*v
+                                        *v = !*v;
+                                        self.tail.current_row_mut().unwrap().value = format!("{}", v);
+                                        self.unsaved = true;
                                     },
                                     _ => {}
                                 }
