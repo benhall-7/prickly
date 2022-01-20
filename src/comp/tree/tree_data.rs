@@ -48,7 +48,7 @@ impl TreeData {
                         .map(|(index, (hash, param))| TreeRow {
                             index,
                             name: format!("{}", hash),
-                            kind: get_kind(param),
+                            kind: RowKind::from_param(param),
                             value: get_value(param),
                             is_parent: is_parent(param),
                         })
@@ -65,7 +65,7 @@ impl TreeData {
                         .map(|(index, param)| TreeRow {
                             index,
                             name: format!("{}", index),
-                            kind: get_kind(param),
+                            kind: RowKind::from_param(param),
                             value: get_value(param),
                             is_parent: is_parent(param),
                         })
@@ -87,24 +87,24 @@ impl TreeData {
     }
 }
 
-fn get_kind(param: &ParamKind) -> RowKind {
-    match param {
-        ParamKind::Bool(_) => RowKind::Bool,
-        ParamKind::I8(_) => RowKind::I8,
-        ParamKind::U8(_) => RowKind::U8,
-        ParamKind::I16(_) => RowKind::I16,
-        ParamKind::U16(_) => RowKind::U16,
-        ParamKind::I32(_) => RowKind::I32,
-        ParamKind::U32(_) => RowKind::U32,
-        ParamKind::Float(_) => RowKind::Float,
-        ParamKind::Hash(_) => RowKind::Hash,
-        ParamKind::Str(_) => RowKind::Str,
-        ParamKind::List(_) => RowKind::List,
-        ParamKind::Struct(_) => RowKind::Struct,
-    }
-}
-
 impl RowKind {
+    pub fn from_param(param: &ParamKind) -> Self {
+        match param {
+            ParamKind::Bool(_) => RowKind::Bool,
+            ParamKind::I8(_) => RowKind::I8,
+            ParamKind::U8(_) => RowKind::U8,
+            ParamKind::I16(_) => RowKind::I16,
+            ParamKind::U16(_) => RowKind::U16,
+            ParamKind::I32(_) => RowKind::I32,
+            ParamKind::U32(_) => RowKind::U32,
+            ParamKind::Float(_) => RowKind::Float,
+            ParamKind::Hash(_) => RowKind::Hash,
+            ParamKind::Str(_) => RowKind::Str,
+            ParamKind::List(_) => RowKind::List,
+            ParamKind::Struct(_) => RowKind::Struct,
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             RowKind::Bool => "bool",
@@ -119,6 +119,27 @@ impl RowKind {
             RowKind::Str => "string",
             RowKind::List => "list",
             RowKind::Struct => "struct",
+        }
+    }
+
+    pub fn is_number(&self) -> bool {
+        matches!(
+            self,
+            RowKind::I8
+                | RowKind::U8
+                | RowKind::I16
+                | RowKind::U16
+                | RowKind::I32
+                | RowKind::U32
+                | &RowKind::Float
+        )
+    }
+
+    pub fn is_incremental(&self) -> bool {
+        if let RowKind::Bool = self {
+            true
+        } else {
+            self.is_number()
         }
     }
 }

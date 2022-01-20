@@ -99,6 +99,24 @@ impl App {
         ptr
     }
 
+    // pub fn indexed_param(&self, index: usize) -> &ParamKind {
+    //     let parent = self.current_param();
+    //     match parent {
+    //         ParamKind::Struct(s) => &s.0[index].1,
+    //         ParamKind::List(l) => &l.0[index],
+    //         _ => panic!("Only struct or list params can be indexed"),
+    //     }
+    // }
+
+    pub fn indexed_param_mut(&mut self, index: usize) -> &mut ParamKind {
+        let parent = self.current_param_mut();
+        match parent {
+            ParamKind::Struct(s) => &mut s.0[index].1,
+            ParamKind::List(l) => &mut l.0[index],
+            _ => panic!("Only struct or list params can be indexed"),
+        }
+    }
+
     pub fn open_file(&mut self) {
         self.mode = AppMode::FileOpen(Explorer::new(self.open_dir.clone(), ExplorerMode::Open));
     }
@@ -159,13 +177,48 @@ impl tui_components::App for App {
                             self.tail.select_param_index(index);
                         }
                     }
+                    TreeResponse::IncValue(index) => {
+                        let child = self.indexed_param_mut(index);
+                        macro_rules! inc {
+                            ($($param_kind:ident),*) => {
+                                match child {
+                                    $(ParamKind::$param_kind(v) => {
+                                        *v = v.saturating_add(1)
+                                    })*
+                                    ParamKind::Float(v) => {
+                                        *v += 1.0;
+                                    }
+                                    ParamKind::Bool(v) => {
+                                        *v = !*v
+                                    },
+                                    _ => {}
+                                }
+                            }
+                        }
+                        inc!(I8, U8, I16, U16, I32, U32);
+                    }
+                    TreeResponse::DecValue(index) => {
+                        let child = self.indexed_param_mut(index);
+                        macro_rules! dec {
+                            ($($param_kind:ident),*) => {
+                                match child {
+                                    $(ParamKind::$param_kind(v) => {
+                                        *v = v.saturating_sub(1)
+                                    })*
+                                    ParamKind::Float(v) => {
+                                        *v -= 1.0;
+                                    }
+                                    ParamKind::Bool(v) => {
+                                        *v = !*v
+                                    },
+                                    _ => {}
+                                }
+                            }
+                        }
+                        dec!(I8, U8, I16, U16, I32, U32);
+                    }
                     TreeResponse::SetValue(index, value) => {
-                        let parent = self.current_param_mut();
-                        let child = match parent {
-                            ParamKind::Struct(s) => &mut s.0[index].1,
-                            ParamKind::List(l) => &mut l.0[index],
-                            _ => panic!("Only struct or list params can be indexed"),
-                        };
+                        let child = self.indexed_param_mut(index);
                         macro_rules! parse {
                             ($($param_kind:ident),*) => { match child {
                                 $(ParamKind::$param_kind(v) => match value.parse() {

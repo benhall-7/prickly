@@ -12,6 +12,7 @@ use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
 use tui::widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget};
 use tui_components::components::*;
+use tui_components::crossterm::event::KeyModifiers;
 use tui_components::{crossterm, tui, Component, Event};
 
 pub struct Tree {
@@ -140,6 +141,8 @@ pub enum TreeResponse {
     Focus,
     Unfocus,
     Handled,
+    IncValue(usize),
+    DecValue(usize),
     SetValue(usize, String),
 }
 
@@ -159,11 +162,29 @@ impl Component for Tree {
         } else if let Event::Key(key_event) = event {
             match key_event.code {
                 KeyCode::Up => {
-                    self.dec();
+                    if key_event.modifiers.contains(KeyModifiers::SHIFT) {
+                        match self.current_row() {
+                            Some(row) if row.kind.is_incremental() => {
+                                return TreeResponse::IncValue(row.index)
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        self.dec();
+                    }
                     TreeResponse::Handled
                 }
                 KeyCode::Down => {
-                    self.inc();
+                    if key_event.modifiers.contains(KeyModifiers::SHIFT) {
+                        match self.current_row() {
+                            Some(row) if row.kind.is_incremental() => {
+                                return TreeResponse::DecValue(row.index)
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        self.inc();
+                    }
                     TreeResponse::Handled
                 }
                 // might change these two
