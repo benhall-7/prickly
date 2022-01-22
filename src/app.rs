@@ -1,4 +1,5 @@
-use super::{Filter, FilterResponse, Tree, TreeResponse};
+use crate::comp::{Filter, FilterResponse, Tree, TreeResponse};
+use crate::route::RouteInfo;
 use std::env::current_dir;
 use std::path::PathBuf;
 
@@ -9,7 +10,7 @@ use tui::buffer::Buffer;
 use tui::layout::{Constraint, Layout, Rect};
 use tui::style::{Color, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, Borders, Clear, Paragraph, TableState, Widget};
+use tui::widgets::{Block, Borders, Clear, Paragraph, Widget};
 use tui_components::components::*;
 use tui_components::rect_ext::RectExt;
 use tui_components::*;
@@ -40,12 +41,6 @@ enum AppMode {
     RegexEdit,
     ConfirmOpen(Confirm),
     ConfirmExit(Confirm),
-}
-
-struct RouteInfo {
-    table: TableState,
-    index: usize,
-    name: String,
 }
 
 impl App {
@@ -131,22 +126,6 @@ impl App {
 
     pub fn confirm_exit(&mut self) {
         self.mode = AppMode::ConfirmExit(Confirm::new("Unsaved changes. Confirm exit?"))
-    }
-}
-
-impl RouteInfo {
-    pub fn new(tree: &Tree) -> Self {
-        let table = tree.table_state().clone();
-        let row = tree.current_row().unwrap();
-        RouteInfo {
-            table,
-            index: row.index,
-            name: row.name.clone(),
-        }
-    }
-
-    pub fn index(&self) -> usize {
-        self.table.selected().unwrap()
     }
 }
 

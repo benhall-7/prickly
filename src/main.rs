@@ -7,8 +7,10 @@ use structopt::StructOpt;
 mod args;
 mod comp;
 mod error;
+mod app;
+mod route;
 
-use comp::*;
+use app::App;
 
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
