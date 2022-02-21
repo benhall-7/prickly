@@ -10,6 +10,9 @@ mod error;
 mod app;
 mod route;
 
+mod rewrite;
+
+use rewrite::*;
 use app::App;
 
 fn main() -> Result<(), error::AppError> {
@@ -30,7 +33,7 @@ fn main() -> Result<(), error::AppError> {
         set_custom_labels(l.into_iter())
     }
 
-    let mut app = App::new(param);
+    let mut app = thing::Container::new(param);
 
     tui_components::run(&mut app, Some("prickly - prc file editor".to_string()))?;
     Ok(())
