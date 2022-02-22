@@ -1,12 +1,20 @@
+use std::fmt::Display;
+
 use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
 use tui_components::{
     crossterm::event::{KeyCode, KeyEvent},
     tui::{
-        style::Style,
+        layout::{Constraint, Rect},
+        style::{Color, Style},
         widgets::{Row, StatefulWidget, Table, TableState},
     },
     App, AppResponse, Component, Event,
 };
+
+const PARAM_TABLE_WIDTH: u16 = 20;
+const MIN_PARAM_TABLE_WIDTH: u16 = 10;
+
+use super::modulo::{add_mod, sub_mod};
 
 #[derive(Debug, Clone)]
 pub struct Container {
@@ -17,6 +25,7 @@ pub struct Container {
 pub struct Param {
     param: ParamParent,
     state: TableState,
+    last_draw_area: Option<Rect>,
     selected: Option<Box<SelectedParam>>,
 }
 
@@ -46,50 +55,6 @@ impl Container {
         let root = Param::new(ParamParent::Struct(param.try_into_owned().unwrap()));
         Self { root }
     }
-
-    fn len(&self) -> usize {
-        let mut len = 1;
-        let mut node = &self.root;
-        loop {
-            node = match node.next() {
-                Some(next) => {
-                    len += 1;
-                    next
-                }
-                None => return len,
-            }
-        }
-    }
-
-    fn nth(&self, n: usize) -> Option<&Param> {
-        let mut nth_node = Some(&self.root);
-        for _ in 0..n {
-            nth_node = match nth_node {
-                None => return None,
-                Some(current) => current.next(),
-            }
-        }
-        nth_node
-    }
-
-    fn nth_mut(&mut self, n: usize) -> Option<&mut Param> {
-        let mut nth_node = Some(&mut self.root);
-        for _ in 0..n {
-            nth_node = match nth_node {
-                None => return None,
-                Some(current) => current.next_mut(),
-            }
-        }
-        nth_node
-    }
-
-    fn tail(&self) -> &Param {
-        self.nth(self.len() - 1).unwrap()
-    }
-
-    fn tail_mut(&mut self) -> &mut Param {
-        self.nth_mut(self.len() - 1).unwrap()
-    }
 }
 
 impl Param {
@@ -97,18 +62,16 @@ impl Param {
         Self {
             param,
             state: TableState::default(),
+            last_draw_area: None,
             selected: None,
         }
     }
 
     fn down(&mut self) {
-        let len = match &self.param {
-            ParamParent::List(list) => list.0.len(),
-            ParamParent::Struct(str) => str.0.len(),
-        };
+        let len = self.param.len();
         if len > 0 {
             match self.state.selected() {
-                Some(selected) => self.state.select(Some((selected + 1) % len)),
+                Some(selected) => self.state.select(Some(add_mod(selected, 1, len))),
                 None => self.state.select(Some(0)),
             }
         } else {
@@ -117,17 +80,36 @@ impl Param {
     }
 
     fn up(&mut self) {
-        let len = match &self.param {
-            ParamParent::List(list) => list.0.len(),
-            ParamParent::Struct(str) => str.0.len(),
-        };
+        let len = self.param.len();
         if len > 0 {
             match self.state.selected() {
-                Some(selected) => self.state.select(Some((selected + 1) % len)),
-                None => self.state.select(Some(0)),
+                Some(selected) => self.state.select(Some(sub_mod(selected, 1, len))),
+                None => self.state.select(Some(len - 1)),
             }
         } else {
             self.state.select(None);
+        }
+    }
+
+    fn enter(&mut self) -> bool {
+        if let Some(selected) = self.state.selected() {
+            match self.param.nth_mut(selected) {
+                ParamKind::List(list) => {
+                    let taken = std::mem::take(list);
+                    let new_param = Param::new(ParamParent::List(taken));
+                    self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
+                    true
+                }
+                ParamKind::Struct(str) => {
+                    let taken = std::mem::take(str);
+                    let new_param = Param::new(ParamParent::Struct(taken));
+                    self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
+                    true
+                }
+                _ => false, // todo: this should begin an editing state
+            }
+        } else {
+            false
         }
     }
 
@@ -150,12 +132,14 @@ impl App for Container {
     fn handle_event(&mut self, event: tui_components::Event) -> tui_components::AppResponse {
         if let Event::Key(key) = event {
             match key.code {
-                KeyCode::Esc => AppResponse::Exit,
-                _ => AppResponse::None,
+                KeyCode::Esc => return AppResponse::Exit,
+                _ => {}
             }
-        } else {
-            AppResponse::None
         }
+        match self.root.handle_event(event) {
+            ParamResponse::None => {}
+        }
+        AppResponse::None
     }
 
     fn draw(
@@ -163,30 +147,136 @@ impl App for Container {
         rect: tui_components::tui::layout::Rect,
         buffer: &mut tui_components::tui::buffer::Buffer,
     ) {
-        let tail = self.tail_mut();
-        if let ParamParent::Struct(str) = &tail.param {}
+        self.root.draw(rect, buffer);
     }
 }
 
-// pub enum ParamResponse {
-//     None,
-// }
+pub enum ParamResponse {
+    None,
+}
 
-// impl Component for Param {
-//     type Response = ParamResponse;
+impl Component for Param {
+    type Response = ParamResponse;
 
-//     fn handle_event(&mut self, event: Event) -> Self::Response {
-//         if let Event::Key(key) = event {
+    fn handle_event(&mut self, event: Event) -> Self::Response {
+        self.next_mut()
+            .map(|next| next.handle_event(event))
+            .unwrap_or_else(|| {
+                if let Event::Key(key) = event {
+                    match key.code {
+                        KeyCode::Up => self.up(),
+                        KeyCode::Down => self.down(),
+                        KeyCode::Enter => {
+                            self.enter();
+                        }
+                        _ => {}
+                    }
+                }
+                ParamResponse::None
+            })
+    }
 
-//         }
-//         None
-//     }
+    fn draw(
+        &mut self,
+        rect: tui_components::tui::layout::Rect,
+        buffer: &mut tui_components::tui::buffer::Buffer,
+    ) {
+        let right = if let Some(next) = self.next_mut() {
+            next.draw(rect, buffer);
+            let prev_area = next.last_draw_area.unwrap();
+            prev_area.left()
+        } else {
+            rect.right()
+        };
+        if right > MIN_PARAM_TABLE_WIDTH {
+            let left = right.saturating_sub(PARAM_TABLE_WIDTH);
+            let table_area = Rect {
+                x: left,
+                y: rect.y,
+                width: right.saturating_sub(left),
+                height: rect.height,
+            };
+            self.last_draw_area = Some(table_area);
 
-//     fn draw(
-//         &mut self,
-//         rect: tui_components::tui::layout::Rect,
-//         buffer: &mut tui_components::tui::buffer::Buffer,
-//     ) {
-//         todo!()
-//     }
-// }
+            let children = self.param.children();
+            let rows = children
+                .iter()
+                .map(|(index, _)| format!("{}", index))
+                .map(|str| Row::new(vec![str]));
+
+            let table = Table::new(rows)
+                .widths(&[Constraint::Percentage(100)])
+                .highlight_style(Style::default().bg(Color::Blue));
+            StatefulWidget::render(table, table_area, buffer, &mut self.state)
+        }
+    }
+}
+
+pub enum ParentIndex {
+    List(usize),
+    Struct(Hash40),
+}
+
+impl ParamParent {
+    pub fn children_mut(&mut self) -> Vec<(ParentIndex, &mut ParamKind)> {
+        match self {
+            ParamParent::List(list) => list
+                .0
+                .iter_mut()
+                .enumerate()
+                .map(|(index, param)| (ParentIndex::List(index), param))
+                .collect(),
+            ParamParent::Struct(str) => str
+                .0
+                .iter_mut()
+                .map(|(hash, param)| (ParentIndex::Struct(*hash), param))
+                .collect(),
+        }
+    }
+
+    pub fn children(&self) -> Vec<(ParentIndex, &ParamKind)> {
+        match self {
+            ParamParent::List(list) => list
+                .0
+                .iter()
+                .enumerate()
+                .map(|(index, param)| (ParentIndex::List(index), param))
+                .collect(),
+            ParamParent::Struct(str) => str
+                .0
+                .iter()
+                .map(|(hash, param)| (ParentIndex::Struct(*hash), param))
+                .collect(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            ParamParent::List(list) => list.0.len(),
+            ParamParent::Struct(str) => str.0.len(),
+        }
+    }
+
+    pub fn nth(&self, n: usize) -> &ParamKind {
+        match self {
+            ParamParent::List(list) => &list.0[n],
+            ParamParent::Struct(str) => &str.0[n].1,
+        }
+    }
+
+    pub fn nth_mut(&mut self, n: usize) -> &mut ParamKind {
+        match self {
+            ParamParent::List(list) => &mut list.0[n],
+            ParamParent::Struct(str) => &mut str.0[n].1,
+        }
+    }
+}
+
+impl Display for ParentIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParentIndex::List(index) => write!(f, "{}", *index),
+            ParentIndex::Struct(hash) => write!(f, "{}", *hash),
+        }
+    }
+}
