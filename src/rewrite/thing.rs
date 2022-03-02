@@ -204,8 +204,7 @@ impl<'a> Component for Param {
             ]
         });
         // each column has 1 left border, and the last one has an extra right border
-        let desired_width =
-            widths.iter().sum::<u16>() + if child_buffer.is_some() { 3 } else { 4 };
+        let desired_width = widths.iter().sum::<u16>() + if child_buffer.is_some() { 3 } else { 4 };
         let true_width = desired_width.min(remaining_space);
         let draw_area = Rect {
             x: 0,
@@ -223,11 +222,7 @@ impl<'a> Component for Param {
             .title(Span::styled("PARAMS", Style::default().fg(Color::White)));
         let table_area = block.inner(draw_area);
 
-        let children = self.param.children();
-        let rows = children
-            .iter()
-            .map(|(index, _)| format!("{}", index))
-            .map(|str| Row::new(vec![str]));
+        let rows = columns.into_iter().map(Row::new);
 
         let constraints = widths.map(Constraint::Length);
         let table = Table::new(rows)
@@ -238,9 +233,9 @@ impl<'a> Component for Param {
         let mut draw_buffer = child_buffer
             .map(|mut buf| {
                 // make space within the buf for the component to render
-                let prev_area = buf.area;
+                let new_buf = Buffer::empty(draw_area);
                 buf.area.x = true_width;
-                buf.resize(prev_area);
+                buf.merge(&new_buf);
                 buf
             })
             .unwrap_or_else(|| Buffer::empty(draw_area));
