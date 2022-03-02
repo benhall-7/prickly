@@ -41,6 +41,7 @@ pub enum FilterResponse {
 
 impl Component for Filter {
     type Response = FilterResponse;
+    type DrawResponse = ();
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
         match self.input.handle_event(event) {

@@ -147,6 +147,7 @@ pub enum TreeResponse {
 
 impl Component for Tree {
     type Response = TreeResponse;
+    type DrawResponse = ();
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
         if let Some(EditingData { input, param_index }) = self.editing_data() {

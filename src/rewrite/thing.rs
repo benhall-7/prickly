@@ -4,14 +4,15 @@ use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
 use tui_components::{
     crossterm::event::{KeyCode, KeyEvent},
     tui::{
+        buffer::Buffer,
         layout::{Constraint, Rect},
         style::{Color, Style},
-        widgets::{Row, StatefulWidget, Table, TableState},
+        text::Span,
+        widgets::{Block, Borders, Row, StatefulWidget, Table, TableState},
     },
     App, AppResponse, Component, Event,
 };
 
-const PARAM_TABLE_WIDTH: u16 = 20;
 const MIN_PARAM_TABLE_WIDTH: u16 = 10;
 
 use super::modulo::{add_mod, sub_mod};
@@ -25,7 +26,6 @@ pub struct Container {
 pub struct Param {
     param: ParamParent,
     state: TableState,
-    last_draw_area: Option<Rect>,
     selected: Option<Box<SelectedParam>>,
 }
 
@@ -62,7 +62,6 @@ impl Param {
         Self {
             param,
             state: TableState::default(),
-            last_draw_area: None,
             selected: None,
         }
     }
@@ -142,12 +141,9 @@ impl App for Container {
         AppResponse::None
     }
 
-    fn draw(
-        &mut self,
-        rect: tui_components::tui::layout::Rect,
-        buffer: &mut tui_components::tui::buffer::Buffer,
-    ) {
-        self.root.draw(rect, buffer);
+    fn draw(&mut self, rect: tui_components::tui::layout::Rect, buffer: &mut Buffer) {
+        let param_buffer = self.root.draw(rect, buffer);
+        buffer.merge(&param_buffer);
     }
 }
 
@@ -155,8 +151,9 @@ pub enum ParamResponse {
     None,
 }
 
-impl Component for Param {
+impl<'a> Component for Param {
     type Response = ParamResponse;
+    type DrawResponse = Buffer;
 
     fn handle_event(&mut self, event: Event) -> Self::Response {
         self.next_mut()
@@ -176,39 +173,81 @@ impl Component for Param {
             })
     }
 
-    fn draw(
-        &mut self,
-        rect: tui_components::tui::layout::Rect,
-        buffer: &mut tui_components::tui::buffer::Buffer,
-    ) {
-        let right = if let Some(next) = self.next_mut() {
-            next.draw(rect, buffer);
-            let prev_area = next.last_draw_area.unwrap();
-            prev_area.left()
-        } else {
-            rect.right()
-        };
-        if right > MIN_PARAM_TABLE_WIDTH {
-            let left = right.saturating_sub(PARAM_TABLE_WIDTH);
-            let table_area = Rect {
-                x: left,
-                y: rect.y,
-                width: right.saturating_sub(left),
-                height: rect.height,
-            };
-            self.last_draw_area = Some(table_area);
+    fn draw(&mut self, rect: tui_components::tui::layout::Rect, _buffer: &mut Buffer) -> Buffer {
+        let child_buffer = self.next_mut().map(|child| child.draw(rect, _buffer));
+        let remaining_space = child_buffer
+            .as_ref()
+            .map(|buf| rect.width - buf.area.width.min(rect.width))
+            .unwrap_or(rect.width);
 
-            let children = self.param.children();
-            let rows = children
-                .iter()
-                .map(|(index, _)| format!("{}", index))
-                .map(|str| Row::new(vec![str]));
-
-            let table = Table::new(rows)
-                .widths(&[Constraint::Percentage(100)])
-                .highlight_style(Style::default().bg(Color::Blue));
-            StatefulWidget::render(table, table_area, buffer, &mut self.state)
+        // the 2nd condition makes it so we always draw the deepest param
+        if remaining_space < MIN_PARAM_TABLE_WIDTH && child_buffer.is_some() {
+            return child_buffer.unwrap();
         }
+
+        let children = self.param.children();
+        let columns = children
+            .iter()
+            .map(|(index, param)| {
+                let name = format!("{}", index);
+                let ty = String::from(param_type(param));
+                let value = param_value(param);
+                [name, ty, value]
+            })
+            .collect::<Vec<_>>();
+
+        let widths = columns.iter().fold([0, 0, 0], |current, col| {
+            [
+                current[0].max(col[0].len() as u16),
+                current[1].max(col[1].len() as u16),
+                current[2].max(col[2].len() as u16),
+            ]
+        });
+        // each column has 1 left border, and the last one has an extra right border
+        let desired_width =
+            widths.iter().sum::<u16>() + if child_buffer.is_some() { 3 } else { 4 };
+        let true_width = desired_width.min(remaining_space);
+        let draw_area = Rect {
+            x: 0,
+            y: rect.y,
+            width: true_width,
+            height: rect.height,
+        };
+
+        let block = Block::default()
+            .borders(if child_buffer.is_some() {
+                Borders::TOP | Borders::LEFT | Borders::BOTTOM
+            } else {
+                Borders::ALL
+            })
+            .title(Span::styled("PARAMS", Style::default().fg(Color::White)));
+        let table_area = block.inner(draw_area);
+
+        let children = self.param.children();
+        let rows = children
+            .iter()
+            .map(|(index, _)| format!("{}", index))
+            .map(|str| Row::new(vec![str]));
+
+        let constraints = widths.map(Constraint::Length);
+        let table = Table::new(rows)
+            .widths(&constraints)
+            .column_spacing(1)
+            .highlight_style(Style::default().bg(Color::Blue));
+
+        let mut draw_buffer = child_buffer
+            .map(|mut buf| {
+                // make space within the buf for the component to render
+                let prev_area = buf.area;
+                buf.area.x = true_width;
+                buf.resize(prev_area);
+                buf
+            })
+            .unwrap_or_else(|| Buffer::empty(draw_area));
+
+        StatefulWidget::render(table, table_area, &mut draw_buffer, &mut self.state);
+
+        draw_buffer
     }
 }
 
@@ -278,5 +317,39 @@ impl Display for ParentIndex {
             ParentIndex::List(index) => write!(f, "{}", *index),
             ParentIndex::Struct(hash) => write!(f, "{}", *hash),
         }
+    }
+}
+
+fn param_type(param: &ParamKind) -> &'static str {
+    match param {
+        ParamKind::Bool(_) => "bool",
+        ParamKind::I8(_) => "i8",
+        ParamKind::U8(_) => "u8",
+        ParamKind::I16(_) => "i16",
+        ParamKind::U16(_) => "u16",
+        ParamKind::I32(_) => "i32",
+        ParamKind::U32(_) => "u32",
+        ParamKind::Float(_) => "f32",
+        ParamKind::Hash(_) => "hash",
+        ParamKind::Str(_) => "string",
+        ParamKind::List(_) => "list",
+        ParamKind::Struct(_) => "struct",
+    }
+}
+
+fn param_value(param: &ParamKind) -> String {
+    match param {
+        ParamKind::Bool(v) => format!("{}", v),
+        ParamKind::I8(v) => format!("{}", v),
+        ParamKind::U8(v) => format!("{}", v),
+        ParamKind::I16(v) => format!("{}", v),
+        ParamKind::U16(v) => format!("{}", v),
+        ParamKind::I32(v) => format!("{}", v),
+        ParamKind::U32(v) => format!("{}", v),
+        ParamKind::Float(v) => format!("{}", v),
+        ParamKind::Hash(v) => format!("{}", v),
+        ParamKind::Str(v) => v.to_string(),
+        ParamKind::List(v) => format!("({} children)", v.0.len()),
+        ParamKind::Struct(v) => format!("({} children)", v.0.len()),
     }
 }
