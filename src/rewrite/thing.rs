@@ -8,7 +8,7 @@ use tui_components::{
         layout::{Constraint, Rect},
         style::{Color, Style},
         text::Span,
-        widgets::{Block, Borders, Row, StatefulWidget, Table, TableState},
+        widgets::{Block, Borders, Row, StatefulWidget, Table, TableState, Widget},
     },
     App, AppResponse, Component, Event,
 };
@@ -175,6 +175,7 @@ impl<'a> Component for Param {
 
     fn draw(&mut self, rect: tui_components::tui::layout::Rect, _buffer: &mut Buffer) -> Buffer {
         let child_buffer = self.next_mut().map(|child| child.draw(rect, _buffer));
+        let is_last_column = child_buffer.is_none();
         let remaining_space = child_buffer
             .as_ref()
             .map(|buf| rect.width - buf.area.width.min(rect.width))
@@ -213,22 +214,32 @@ impl<'a> Component for Param {
             height: rect.height,
         };
 
-        let block = Block::default()
-            .borders(if child_buffer.is_some() {
-                Borders::TOP | Borders::LEFT | Borders::BOTTOM
-            } else {
-                Borders::ALL
-            })
-            .title(Span::styled("PARAMS", Style::default().fg(Color::White)));
+        let block = if is_last_column {
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Blue))
+        } else {
+            Block::default()
+                .borders(Borders::TOP | Borders::LEFT | Borders::BOTTOM)
+                .border_style(Style::default().fg(Color::DarkGray))
+        };
         let table_area = block.inner(draw_area);
 
         let rows = columns.into_iter().map(Row::new);
 
         let constraints = widths.map(Constraint::Length);
-        let table = Table::new(rows)
-            .widths(&constraints)
-            .column_spacing(1)
-            .highlight_style(Style::default().bg(Color::Blue));
+        let table = if is_last_column {
+            Table::new(rows)
+                .widths(&constraints)
+                .column_spacing(1)
+                .highlight_style(Style::default().bg(Color::Blue))
+        } else {
+            Table::new(rows)
+                .widths(&constraints)
+                .column_spacing(1)
+                .style(Style::default().fg(Color::DarkGray))
+                .highlight_style(Style::default().fg(Color::Gray).bg(Color::Blue))
+        };
 
         let mut draw_buffer = child_buffer
             .map(|mut buf| {
@@ -240,6 +251,7 @@ impl<'a> Component for Param {
             })
             .unwrap_or_else(|| Buffer::empty(draw_area));
 
+        Widget::render(block, draw_area, &mut draw_buffer);
         StatefulWidget::render(table, table_area, &mut draw_buffer, &mut self.state);
 
         draw_buffer
