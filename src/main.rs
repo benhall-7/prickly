@@ -4,16 +4,13 @@ use prc::hash40::{read_custom_labels, set_custom_labels};
 use prc::open;
 use structopt::StructOpt;
 
+use components::root::Root;
+
 mod args;
-mod comp;
 mod error;
-mod app;
-mod route;
 
-mod rewrite;
-
-use rewrite::*;
-use app::App;
+pub mod components;
+pub mod utils;
 
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
@@ -33,7 +30,7 @@ fn main() -> Result<(), error::AppError> {
         set_custom_labels(l.into_iter())
     }
 
-    let mut app = thing::Container::new(param);
+    let mut app = Root::new(param);
 
     tui_components::run(&mut app, Some("prickly - prc file editor".to_string()))?;
     Ok(())

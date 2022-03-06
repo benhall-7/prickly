@@ -683,6 +683,7 @@ name = "tui-components"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "num",
  "tui",
 ]
 
