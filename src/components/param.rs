@@ -1,9 +1,8 @@
 use std::fmt::Display;
 
 use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
-use tui_components::components::num_input::{
-    NumInputResponse, NumInputSpanBuilder, SignedIntInput,
-};
+use tui_components::components::num_input::{NumInputResponse, SignedIntInput, UnsignedIntInput};
+use tui_components::components::{Checkbox, CheckboxResponse, Input, InputResponse};
 use tui_components::crossterm::event::KeyCode;
 use tui_components::tui::buffer::Buffer;
 use tui_components::tui::layout::{Constraint, Rect};
@@ -32,16 +31,16 @@ pub enum ParamParent {
 
 #[derive(Debug)]
 pub enum SelectedParam {
-    Bool(bool),
+    Bool(Checkbox),
     I8(SignedIntInput<i8>),
-    U8(u8),
+    U8(UnsignedIntInput<u8>),
     I16(SignedIntInput<i16>),
-    U16(u16),
+    U16(UnsignedIntInput<u16>),
     I32(SignedIntInput<i32>),
-    U32(u32),
+    U32(UnsignedIntInput<u32>),
     Float(f32),
     Hash(Hash40),
-    Str(String),
+    Str(Input),
     NewLevel(Param),
 }
 
@@ -93,16 +92,39 @@ impl Param {
                     self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
                     true
                 }
+                ParamKind::Bool(val) => {
+                    self.selected = Some(Box::new(SelectedParam::Bool(Checkbox::new(*val))));
+                    true
+                }
                 ParamKind::I8(int) => {
                     self.selected = Some(Box::new(SelectedParam::I8(SignedIntInput::new(*int))));
+                    true
+                }
+                ParamKind::U8(int) => {
+                    self.selected = Some(Box::new(SelectedParam::U8(UnsignedIntInput::new(*int))));
                     true
                 }
                 ParamKind::I16(int) => {
                     self.selected = Some(Box::new(SelectedParam::I16(SignedIntInput::new(*int))));
                     true
                 }
+                ParamKind::U16(int) => {
+                    self.selected = Some(Box::new(SelectedParam::U16(UnsignedIntInput::new(*int))));
+                    true
+                }
                 ParamKind::I32(int) => {
                     self.selected = Some(Box::new(SelectedParam::I32(SignedIntInput::new(*int))));
+                    true
+                }
+                ParamKind::U32(int) => {
+                    self.selected = Some(Box::new(SelectedParam::U32(UnsignedIntInput::new(*int))));
+                    true
+                }
+                ParamKind::Str(str) => {
+                    let mut input = Input::default();
+                    input.value = str.clone();
+                    input.focused = true;
+                    self.selected = Some(Box::new(SelectedParam::Str(input)));
                     true
                 }
                 _ => false, // todo: this should begin an editing state
@@ -122,28 +144,48 @@ impl Param {
                         ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
                         ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
                     },
-                    SelectedParam::Bool(_) => todo!(),
+                    SelectedParam::Bool(val) => {
+                        if update_value {
+                            *self.param.nth_mut(index) = val.value.into()
+                        }
+                    }
                     SelectedParam::I8(int) => {
                         if update_value {
                             *self.param.nth_mut(index) = int.value().into()
                         }
                     }
-                    SelectedParam::U8(_) => todo!(),
+                    SelectedParam::U8(int) => {
+                        if update_value {
+                            *self.param.nth_mut(index) = int.value().into()
+                        }
+                    }
                     SelectedParam::I16(int) => {
                         if update_value {
                             *self.param.nth_mut(index) = int.value().into()
                         }
                     }
-                    SelectedParam::U16(_) => todo!(),
+                    SelectedParam::U16(int) => {
+                        if update_value {
+                            *self.param.nth_mut(index) = int.value().into()
+                        }
+                    }
                     SelectedParam::I32(int) => {
                         if update_value {
                             *self.param.nth_mut(index) = int.value().into()
                         }
                     }
-                    SelectedParam::U32(_) => todo!(),
+                    SelectedParam::U32(int) => {
+                        if update_value {
+                            *self.param.nth_mut(index) = int.value().into()
+                        }
+                    }
                     SelectedParam::Float(_) => todo!(),
                     SelectedParam::Hash(_) => todo!(),
-                    SelectedParam::Str(_) => todo!(),
+                    SelectedParam::Str(str) => {
+                        if update_value {
+                            *self.param.nth_mut(index) = str.value.into()
+                        }
+                    }
                 }
             }
         }
@@ -170,16 +212,16 @@ impl Param {
             .map(|(index, selected)| {
                 let spans = match &selected {
                     // can't select the todo! ones yet, so this is safe
-                    SelectedParam::Bool(_) => todo!(),
+                    SelectedParam::Bool(val) => val.get_span_builder().get_spans(),
                     SelectedParam::I8(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U8(_) => todo!(),
+                    SelectedParam::U8(int) => int.get_span_builder().get_spans(),
                     SelectedParam::I16(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U16(_) => todo!(),
+                    SelectedParam::U16(int) => int.get_span_builder().get_spans(),
                     SelectedParam::I32(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U32(_) => todo!(),
+                    SelectedParam::U32(int) => int.get_span_builder().get_spans(),
                     SelectedParam::Float(_) => todo!(),
                     SelectedParam::Hash(_) => todo!(),
-                    SelectedParam::Str(_) => todo!(),
+                    SelectedParam::Str(str) => str.get_span_builder().get_spans(),
                     SelectedParam::NewLevel(param) => match &param.param {
                         ParamParent::List(list) => {
                             Spans::from(format!("({} children)", list.0.len()))
@@ -287,14 +329,33 @@ impl<'a> Component for Param {
         if let Some(next) = self.next_mut() {
             match next.handle_event(event) {
                 ParamResponse::Exit => self.exit(false),
-                ParamResponse::Handled => {},
+                ParamResponse::Handled => {}
                 ParamResponse::None => return ParamResponse::None,
             }
         } else if let Some(selected) = self.selected.as_deref_mut() {
             let response = match selected {
                 SelectedParam::I8(int) => int.handle_event(event),
+                SelectedParam::U8(int) => int.handle_event(event),
                 SelectedParam::I16(int) => int.handle_event(event),
+                SelectedParam::U16(int) => int.handle_event(event),
                 SelectedParam::I32(int) => int.handle_event(event),
+                SelectedParam::U32(int) => int.handle_event(event),
+                SelectedParam::Bool(val) => {
+                    match val.handle_event(event) {
+                        CheckboxResponse::Submit => self.exit(true),
+                        CheckboxResponse::Exit => self.exit(false),
+                        _ => {}
+                    }
+                    return ParamResponse::Handled;
+                }
+                SelectedParam::Str(str) => {
+                    match str.handle_event(event) {
+                        InputResponse::Submit => self.exit(true),
+                        InputResponse::Cancel => self.exit(false),
+                        _ => {}
+                    }
+                    return ParamResponse::Handled;
+                }
                 _ => unreachable!(),
             };
             match response {
@@ -329,7 +390,7 @@ impl<'a> Component for Param {
             return child_buffer.unwrap();
         }
 
-        let selected_info = self.get_selected_span().map(|(a, b)| (a, b.to_owned()));
+        let selected_info = self.get_selected_span();
 
         let children = self.param.children();
         let columns = children
@@ -429,7 +490,7 @@ fn param_type(param: &ParamKind) -> &'static str {
 
 fn param_value(param: &ParamKind) -> String {
     match param {
-        ParamKind::Bool(v) => format!("{}", v),
+        ParamKind::Bool(v) => if *v { '✓' } else { '✗' }.into(),
         ParamKind::I8(v) => format!("{}", v),
         ParamKind::U8(v) => format!("{}", v),
         ParamKind::I16(v) => format!("{}", v),
