@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
 use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
-use tui_components::components::num_input::{NumInputResponse, SignedIntInput, UnsignedIntInput};
+use tui_components::components::num_input::{
+    FloatInput, NumInputResponse, SignedIntInput, UnsignedIntInput,
+};
 use tui_components::components::{Checkbox, CheckboxResponse, Input, InputResponse};
 use tui_components::crossterm::event::KeyCode;
 use tui_components::tui::buffer::Buffer;
@@ -38,7 +40,7 @@ pub enum SelectedParam {
     U16(UnsignedIntInput<u16>),
     I32(SignedIntInput<i32>),
     U32(UnsignedIntInput<u32>),
-    Float(f32),
+    Float(FloatInput<f32>),
     Hash(Hash40),
     Str(Input),
     NewLevel(Param),
@@ -120,6 +122,12 @@ impl Param {
                     self.selected = Some(Box::new(SelectedParam::U32(UnsignedIntInput::new(*int))));
                     true
                 }
+                ParamKind::Float(val) => {
+                    self.selected = Some(Box::new(SelectedParam::Float(
+                        FloatInput::new(*val).unwrap(),
+                    )));
+                    true
+                }
                 ParamKind::Str(str) => {
                     let mut input = Input::default();
                     input.value = str.clone();
@@ -127,7 +135,7 @@ impl Param {
                     self.selected = Some(Box::new(SelectedParam::Str(input)));
                     true
                 }
-                _ => false, // todo: this should begin an editing state
+                _ => false,
             }
         } else {
             false
@@ -139,52 +147,24 @@ impl Param {
     fn exit(&mut self, update_value: bool) {
         if let Some(index) = self.state.selected() {
             if let Some(selected) = self.selected.take() {
-                match *selected {
-                    SelectedParam::NewLevel(level) => match level.param {
-                        ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
-                        ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
-                    },
-                    SelectedParam::Bool(val) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = val.value.into()
+                if update_value {
+                    match *selected {
+                        SelectedParam::NewLevel(level) => match level.param {
+                            ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
+                            ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
+                        },
+                        SelectedParam::Bool(val) => *self.param.nth_mut(index) = val.value.into(),
+                        SelectedParam::I8(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::U8(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::I16(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::U16(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::I32(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::U32(int) => *self.param.nth_mut(index) = int.value().into(),
+                        SelectedParam::Float(val) => {
+                            *self.param.nth_mut(index) = val.value().into()
                         }
-                    }
-                    SelectedParam::I8(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::U8(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::I16(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::U16(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::I32(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::U32(int) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = int.value().into()
-                        }
-                    }
-                    SelectedParam::Float(_) => todo!(),
-                    SelectedParam::Hash(_) => todo!(),
-                    SelectedParam::Str(str) => {
-                        if update_value {
-                            *self.param.nth_mut(index) = str.value.into()
-                        }
+                        SelectedParam::Hash(_) => todo!(),
+                        SelectedParam::Str(str) => *self.param.nth_mut(index) = str.value.into(),
                     }
                 }
             }
@@ -219,7 +199,7 @@ impl Param {
                     SelectedParam::U16(int) => int.get_span_builder().get_spans(),
                     SelectedParam::I32(int) => int.get_span_builder().get_spans(),
                     SelectedParam::U32(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::Float(_) => todo!(),
+                    SelectedParam::Float(val) => val.get_span_builder().get_spans(),
                     SelectedParam::Hash(_) => todo!(),
                     SelectedParam::Str(str) => str.get_span_builder().get_spans(),
                     SelectedParam::NewLevel(param) => match &param.param {
@@ -340,6 +320,7 @@ impl<'a> Component for Param {
                 SelectedParam::U16(int) => int.handle_event(event),
                 SelectedParam::I32(int) => int.handle_event(event),
                 SelectedParam::U32(int) => int.handle_event(event),
+                SelectedParam::Float(val) => val.handle_event(event),
                 SelectedParam::Bool(val) => {
                     match val.handle_event(event) {
                         CheckboxResponse::Submit => self.exit(true),
