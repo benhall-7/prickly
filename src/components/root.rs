@@ -1,8 +1,6 @@
 use prc::ParamKind;
 use tui_components::{
-    crossterm::event::{KeyCode, KeyEvent},
-    tui::buffer::Buffer,
-    App, AppResponse, Component, Event,
+    crossterm::event::KeyCode, tui::buffer::Buffer, App, AppResponse, Component, Event,
 };
 
 use super::param::{Param, ParamParent, ParamResponse};

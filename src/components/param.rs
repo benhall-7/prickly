@@ -4,7 +4,7 @@ use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
 use tui_components::components::num_input::{
     FloatInput, NumInputResponse, SignedIntInput, UnsignedIntInput,
 };
-use tui_components::components::{Checkbox, CheckboxResponse, Input, InputResponse};
+use tui_components::components::{Input, InputResponse, FALSE_CHAR, TRUE_CHAR};
 use tui_components::crossterm::event::KeyCode;
 use tui_components::tui::buffer::Buffer;
 use tui_components::tui::layout::{Constraint, Rect};
@@ -33,7 +33,6 @@ pub enum ParamParent {
 
 #[derive(Debug)]
 pub enum SelectedParam {
-    Bool(Checkbox),
     I8(SignedIntInput<i8>),
     U8(UnsignedIntInput<u8>),
     I16(SignedIntInput<i16>),
@@ -95,8 +94,8 @@ impl Param {
                     true
                 }
                 ParamKind::Bool(val) => {
-                    self.selected = Some(Box::new(SelectedParam::Bool(Checkbox::new(*val))));
-                    true
+                    *val = !*val;
+                    false
                 }
                 ParamKind::I8(int) => {
                     self.selected = Some(Box::new(SelectedParam::I8(SignedIntInput::new(*int))));
@@ -147,13 +146,14 @@ impl Param {
     fn exit(&mut self, update_value: bool) {
         if let Some(index) = self.state.selected() {
             if let Some(selected) = self.selected.take() {
-                if update_value {
+                if let SelectedParam::NewLevel(level) = *selected {
+                    match level.param {
+                        ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
+                        ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
+                    }
+                } else if update_value {
                     match *selected {
-                        SelectedParam::NewLevel(level) => match level.param {
-                            ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
-                            ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
-                        },
-                        SelectedParam::Bool(val) => *self.param.nth_mut(index) = val.value.into(),
+                        SelectedParam::NewLevel(..) => unreachable!(),
                         SelectedParam::I8(int) => *self.param.nth_mut(index) = int.value().into(),
                         SelectedParam::U8(int) => *self.param.nth_mut(index) = int.value().into(),
                         SelectedParam::I16(int) => *self.param.nth_mut(index) = int.value().into(),
@@ -192,7 +192,6 @@ impl Param {
             .map(|(index, selected)| {
                 let spans = match &selected {
                     // can't select the todo! ones yet, so this is safe
-                    SelectedParam::Bool(val) => val.get_span_builder().get_spans(),
                     SelectedParam::I8(int) => int.get_span_builder().get_spans(),
                     SelectedParam::U8(int) => int.get_span_builder().get_spans(),
                     SelectedParam::I16(int) => int.get_span_builder().get_spans(),
@@ -321,14 +320,6 @@ impl<'a> Component for Param {
                 SelectedParam::I32(int) => int.handle_event(event),
                 SelectedParam::U32(int) => int.handle_event(event),
                 SelectedParam::Float(val) => val.handle_event(event),
-                SelectedParam::Bool(val) => {
-                    match val.handle_event(event) {
-                        CheckboxResponse::Submit => self.exit(true),
-                        CheckboxResponse::Exit => self.exit(false),
-                        _ => {}
-                    }
-                    return ParamResponse::Handled;
-                }
                 SelectedParam::Str(str) => {
                     match str.handle_event(event) {
                         InputResponse::Submit => self.exit(true),
@@ -471,7 +462,7 @@ fn param_type(param: &ParamKind) -> &'static str {
 
 fn param_value(param: &ParamKind) -> String {
     match param {
-        ParamKind::Bool(v) => if *v { '✓' } else { '✗' }.into(),
+        ParamKind::Bool(v) => if *v { TRUE_CHAR } else { FALSE_CHAR }.into(),
         ParamKind::I8(v) => format!("{}", v),
         ParamKind::U8(v) => format!("{}", v),
         ParamKind::I16(v) => format!("{}", v),
