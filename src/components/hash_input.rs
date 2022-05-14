@@ -61,7 +61,7 @@ impl HashInput {
         spans.push(String::from("> "), Style::default().fg(Color::Gray));
         let status = self.status();
         let color = match status {
-            HashStatus::Hash(..) | HashStatus::LabelExists(..) => Color::Gray,
+            HashStatus::Hash(..) | HashStatus::LabelExists(..) => Color::Green,
             HashStatus::HashInvalid => Color::Red,
             HashStatus::LabelNotExists(..) | HashStatus::LabelsPoisoned(..) => Color::LightYellow,
         };
