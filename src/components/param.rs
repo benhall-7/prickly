@@ -16,6 +16,8 @@ use tui_components::{tui::widgets::TableState, Component};
 
 use crate::utils::modulo::{add_mod, sub_mod};
 
+use super::hash_input::{HashInput, HashInputResponse};
+
 const MIN_PARAM_TABLE_WIDTH: u16 = 10;
 
 #[derive(Debug)]
@@ -40,7 +42,7 @@ pub enum SelectedParam {
     I32(SignedIntInput<i32>),
     U32(UnsignedIntInput<u32>),
     Float(FloatInput<f32>),
-    Hash(Hash40),
+    Hash(HashInput),
     Str(Input),
     NewLevel(Param),
 }
@@ -78,66 +80,55 @@ impl Param {
         }
     }
 
-    fn enter(&mut self) -> bool {
+    fn enter(&mut self) {
         if let Some(selected) = self.state.selected() {
             match self.param.nth_mut(selected) {
                 ParamKind::List(list) => {
                     let taken = std::mem::take(list);
                     let new_param = Param::new(ParamParent::List(taken));
                     self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
-                    true
                 }
                 ParamKind::Struct(str) => {
                     let taken = std::mem::take(str);
                     let new_param = Param::new(ParamParent::Struct(taken));
                     self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
-                    true
                 }
                 ParamKind::Bool(val) => {
                     *val = !*val;
-                    false
                 }
                 ParamKind::I8(int) => {
                     self.selected = Some(Box::new(SelectedParam::I8(SignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::U8(int) => {
                     self.selected = Some(Box::new(SelectedParam::U8(UnsignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::I16(int) => {
                     self.selected = Some(Box::new(SelectedParam::I16(SignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::U16(int) => {
                     self.selected = Some(Box::new(SelectedParam::U16(UnsignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::I32(int) => {
                     self.selected = Some(Box::new(SelectedParam::I32(SignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::U32(int) => {
                     self.selected = Some(Box::new(SelectedParam::U32(UnsignedIntInput::new(*int))));
-                    true
                 }
                 ParamKind::Float(val) => {
                     self.selected = Some(Box::new(SelectedParam::Float(
                         FloatInput::new(*val).unwrap(),
                     )));
-                    true
                 }
                 ParamKind::Str(str) => {
                     let mut input = Input::default();
                     input.value = str.clone();
                     input.focused = true;
                     self.selected = Some(Box::new(SelectedParam::Str(input)));
-                    true
                 }
-                _ => false,
+                ParamKind::Hash(hash) => {
+                    self.selected = Some(Box::new(SelectedParam::Hash(HashInput::new(*hash))))
+                }
             }
-        } else {
-            false
         }
     }
 
@@ -146,25 +137,24 @@ impl Param {
     fn exit(&mut self, update_value: bool) {
         if let Some(index) = self.state.selected() {
             if let Some(selected) = self.selected.take() {
+                let nth = self.param.nth_mut(index);
                 if let SelectedParam::NewLevel(level) = *selected {
                     match level.param {
-                        ParamParent::List(list) => *self.param.nth_mut(index) = list.into(),
-                        ParamParent::Struct(str) => *self.param.nth_mut(index) = str.into(),
+                        ParamParent::List(list) => *nth = list.into(),
+                        ParamParent::Struct(str) => *nth = str.into(),
                     }
                 } else if update_value {
                     match *selected {
                         SelectedParam::NewLevel(..) => unreachable!(),
-                        SelectedParam::I8(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::U8(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::I16(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::U16(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::I32(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::U32(int) => *self.param.nth_mut(index) = int.value().into(),
-                        SelectedParam::Float(val) => {
-                            *self.param.nth_mut(index) = val.value().into()
-                        }
-                        SelectedParam::Hash(_) => todo!(),
-                        SelectedParam::Str(str) => *self.param.nth_mut(index) = str.value.into(),
+                        SelectedParam::I8(int) => *nth = int.value().into(),
+                        SelectedParam::U8(int) => *nth = int.value().into(),
+                        SelectedParam::I16(int) => *nth = int.value().into(),
+                        SelectedParam::U16(int) => *nth = int.value().into(),
+                        SelectedParam::I32(int) => *nth = int.value().into(),
+                        SelectedParam::U32(int) => *nth = int.value().into(),
+                        SelectedParam::Float(val) => *nth = val.value().into(),
+                        SelectedParam::Hash(hash) => *nth = hash.value().into(),
+                        SelectedParam::Str(str) => *nth = str.value.into(),
                     }
                 }
             }
@@ -191,7 +181,6 @@ impl Param {
             .zip(self.selected.as_deref())
             .map(|(index, selected)| {
                 let spans = match &selected {
-                    // can't select the todo! ones yet, so this is safe
                     SelectedParam::I8(int) => int.get_span_builder().get_spans(),
                     SelectedParam::U8(int) => int.get_span_builder().get_spans(),
                     SelectedParam::I16(int) => int.get_span_builder().get_spans(),
@@ -199,7 +188,7 @@ impl Param {
                     SelectedParam::I32(int) => int.get_span_builder().get_spans(),
                     SelectedParam::U32(int) => int.get_span_builder().get_spans(),
                     SelectedParam::Float(val) => val.get_span_builder().get_spans(),
-                    SelectedParam::Hash(_) => todo!(),
+                    SelectedParam::Hash(hash) => hash.get_span_builder().get_spans(),
                     SelectedParam::Str(str) => str.get_span_builder().get_spans(),
                     SelectedParam::NewLevel(param) => match &param.param {
                         ParamParent::List(list) => {
@@ -328,7 +317,15 @@ impl<'a> Component for Param {
                     }
                     return ParamResponse::Handled;
                 }
-                _ => unreachable!(),
+                SelectedParam::Hash(hash) => {
+                    match hash.handle_event(event) {
+                        HashInputResponse::Submit => self.exit(true),
+                        HashInputResponse::Cancel => self.exit(false),
+                        _ => {}
+                    }
+                    return ParamResponse::Handled;
+                }
+                SelectedParam::NewLevel(_) => unreachable!(),
             };
             match response {
                 NumInputResponse::Submit => self.exit(true),
@@ -349,8 +346,8 @@ impl<'a> Component for Param {
         ParamResponse::Handled
     }
 
-    fn draw(&mut self, rect: tui_components::tui::layout::Rect, _buffer: &mut Buffer) -> Buffer {
-        let child_buffer = self.next_mut().map(|child| child.draw(rect, _buffer));
+    fn draw(&mut self, rect: tui_components::tui::layout::Rect, buffer: &mut Buffer) -> Buffer {
+        let child_buffer = self.next_mut().map(|child| child.draw(rect, buffer));
         let is_last_column = child_buffer.is_none();
         let remaining_space = child_buffer
             .as_ref()
@@ -358,8 +355,10 @@ impl<'a> Component for Param {
             .unwrap_or(rect.width);
 
         // the 2nd condition makes it so we always draw the deepest param
-        if remaining_space < MIN_PARAM_TABLE_WIDTH && child_buffer.is_some() {
-            return child_buffer.unwrap();
+        if remaining_space < MIN_PARAM_TABLE_WIDTH {
+            if let Some(child_buf) = child_buffer {
+                return child_buf;
+            }
         }
 
         let selected_info = self.get_selected_span();

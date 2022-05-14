@@ -1,6 +1,7 @@
 use std::env::current_exe;
 
-use prc::hash40::{read_custom_labels, set_custom_labels};
+use prc::hash40::label_map::{self, LabelMap};
+use prc::hash40::Hash40;
 use prc::open;
 use structopt::StructOpt;
 
@@ -21,13 +22,18 @@ fn main() -> Result<(), error::AppError> {
         .unwrap_or_default()
         .into();
 
-    if let Ok(l) = read_custom_labels("ParamLabels.csv") {
-        set_custom_labels(l.into_iter())
-    } else if let Some(l) = current_exe()
+    let label_arc = Hash40::label_map();
+    let label_map = label_arc.lock().ok();
+    let labels = LabelMap::read_custom_labels("ParamLabels.csv")
         .ok()
-        .and_then(|path| read_custom_labels(path.parent().unwrap().join("ParamLabels.csv")).ok())
-    {
-        set_custom_labels(l.into_iter())
+        .or_else(|| {
+            current_exe().ok().and_then(|path| {
+                LabelMap::read_custom_labels(path.parent().unwrap().join("ParamLabels.csv")).ok()
+            })
+        });
+    if let Some((labels, mut label_map)) = labels.zip(label_map) {
+        label_map.strict = true;
+        label_map.add_custom_labels(labels.into_iter());
     }
 
     let mut app = Root::new(param);
