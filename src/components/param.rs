@@ -12,6 +12,7 @@ use tui_components::tui::style::{Color, Style};
 use tui_components::tui::text::Spans;
 use tui_components::tui::widgets::{Block, Borders, Row, StatefulWidget, Table, Widget};
 use tui_components::Event;
+use tui_components::Spannable;
 use tui_components::{tui::widgets::TableState, Component};
 
 use crate::utils::modulo::{add_mod, sub_mod};
@@ -181,15 +182,15 @@ impl Param {
             .zip(self.selected.as_deref())
             .map(|(index, selected)| {
                 let spans = match &selected {
-                    SelectedParam::I8(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U8(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::I16(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U16(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::I32(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::U32(int) => int.get_span_builder().get_spans(),
-                    SelectedParam::Float(val) => val.get_span_builder().get_spans(),
-                    SelectedParam::Hash(hash) => hash.get_span_builder().get_spans(),
-                    SelectedParam::Str(str) => str.get_span_builder().get_spans(),
+                    SelectedParam::I8(int) => int.get_spans(),
+                    SelectedParam::U8(int) => int.get_spans(),
+                    SelectedParam::I16(int) => int.get_spans(),
+                    SelectedParam::U16(int) => int.get_spans(),
+                    SelectedParam::I32(int) => int.get_spans(),
+                    SelectedParam::U32(int) => int.get_spans(),
+                    SelectedParam::Float(val) => val.get_spans(),
+                    SelectedParam::Hash(hash) => hash.get_spans(),
+                    SelectedParam::Str(str) => str.get_spans(),
                     SelectedParam::NewLevel(param) => match &param.param {
                         ParamParent::List(list) => {
                             Spans::from(format!("({} children)", list.0.len()))

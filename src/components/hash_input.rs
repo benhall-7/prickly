@@ -1,4 +1,6 @@
 use prc::hash40::{hash40, Hash40};
+use tui_components::tui::text::{Span, Spans};
+use tui_components::Spannable;
 use tui_components::{
     crossterm::event::KeyCode,
     span_builder::SpanBuilder,
@@ -55,19 +57,6 @@ impl HashInput {
     pub fn value(&self) -> Hash40 {
         self.return_value
     }
-
-    pub fn get_span_builder(&self) -> SpanBuilder {
-        let mut spans = SpanBuilder::default();
-        spans.push(String::from("> "), Style::default().fg(Color::Gray));
-        let status = self.status();
-        let color = match status {
-            HashStatus::Hash(..) | HashStatus::LabelExists(..) => Color::Green,
-            HashStatus::HashInvalid => Color::Red,
-            HashStatus::LabelNotExists(..) | HashStatus::LabelsPoisoned(..) => Color::LightYellow,
-        };
-        spans.push(self.value.clone(), Style::default().fg(color));
-        spans
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -119,8 +108,27 @@ impl Component for HashInput {
         rect: tui_components::tui::layout::Rect,
         buffer: &mut tui_components::tui::buffer::Buffer,
     ) -> Self::DrawResponse {
-        let span_builder = self.get_span_builder();
-        let text = Paragraph::new(span_builder.get_spans());
+        let text = Paragraph::new(self.get_spans());
         Widget::render(text, rect, buffer);
+    }
+}
+
+impl Spannable for HashInput {
+    fn get_spans<'a, 'b>(&'a self) -> tui_components::tui::text::Spans<'b> {
+        let mut spans = Spans::default();
+        spans.0.push(Span::styled(
+            String::from("> "),
+            Style::default().fg(Color::Gray),
+        ));
+        let status = self.status();
+        let color = match status {
+            HashStatus::Hash(..) | HashStatus::LabelExists(..) => Color::Green,
+            HashStatus::HashInvalid => Color::Red,
+            HashStatus::LabelNotExists(..) | HashStatus::LabelsPoisoned(..) => Color::LightYellow,
+        };
+        spans
+            .0
+            .push(Span::styled(self.value.clone(), Style::default().fg(color)));
+        spans
     }
 }
