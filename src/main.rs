@@ -1,6 +1,6 @@
 use std::env::current_exe;
 
-use prc::hash40::label_map::{self, LabelMap};
+use prc::hash40::label_map::LabelMap;
 use prc::hash40::Hash40;
 use prc::open;
 use structopt::StructOpt;

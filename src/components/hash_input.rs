@@ -3,7 +3,6 @@ use tui_components::tui::text::{Span, Spans};
 use tui_components::Spannable;
 use tui_components::{
     crossterm::event::KeyCode,
-    span_builder::SpanBuilder,
     tui::{
         style::{Color, Style},
         widgets::{Paragraph, Widget},
