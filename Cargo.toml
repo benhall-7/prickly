@@ -5,7 +5,7 @@ authors = ["BenHall-7 <Benjaminjahall@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-tui-components = { path = "../tui-components" }
+tui-components = "0.1"
 prc-rs = "1.4"
 regex = "1.4"
 structopt = "0.3"

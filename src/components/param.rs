@@ -1,4 +1,6 @@
+use std::collections::BTreeSet;
 use std::fmt::Display;
+use std::sync::{Arc, Mutex};
 
 use prc::{hash40::Hash40, ParamKind, ParamList, ParamStruct};
 use tui_components::components::num_input::{
@@ -26,6 +28,7 @@ pub struct Param {
     param: ParamParent,
     state: TableState,
     selected: Option<Box<SelectedParam>>,
+    sorted_labels: Arc<Mutex<BTreeSet<String>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,11 +52,12 @@ pub enum SelectedParam {
 }
 
 impl Param {
-    pub fn new(param: ParamParent) -> Self {
+    pub fn new(param: ParamParent, sorted_labels: Arc<Mutex<BTreeSet<String>>>) -> Self {
         Self {
             param,
             state: TableState::default(),
             selected: None,
+            sorted_labels,
         }
     }
 
@@ -86,12 +90,14 @@ impl Param {
             match self.param.nth_mut(selected) {
                 ParamKind::List(list) => {
                     let taken = std::mem::take(list);
-                    let new_param = Param::new(ParamParent::List(taken));
+                    let new_param =
+                        Param::new(ParamParent::List(taken), self.sorted_labels.clone());
                     self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
                 }
                 ParamKind::Struct(str) => {
                     let taken = std::mem::take(str);
-                    let new_param = Param::new(ParamParent::Struct(taken));
+                    let new_param =
+                        Param::new(ParamParent::Struct(taken), self.sorted_labels.clone());
                     self.selected = Some(Box::new(SelectedParam::NewLevel(new_param)));
                 }
                 ParamKind::Bool(val) => {
@@ -127,7 +133,10 @@ impl Param {
                     self.selected = Some(Box::new(SelectedParam::Str(input)));
                 }
                 ParamKind::Hash(hash) => {
-                    self.selected = Some(Box::new(SelectedParam::Hash(HashInput::new(*hash))))
+                    self.selected = Some(Box::new(SelectedParam::Hash(HashInput::new(
+                        *hash,
+                        self.sorted_labels.clone(),
+                    ))))
                 }
             }
         }

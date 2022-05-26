@@ -1,3 +1,8 @@
+use std::{
+    collections::BTreeSet,
+    sync::{Arc, Mutex},
+};
+
 use prc::ParamKind;
 use tui_components::{
     crossterm::event::KeyCode, tui::buffer::Buffer, App, AppResponse, Component, Event,
@@ -29,8 +34,11 @@ impl App for Root {
 }
 
 impl Root {
-    pub fn new(param: ParamKind) -> Self {
-        let root = Param::new(ParamParent::Struct(param.try_into_owned().unwrap()));
+    pub fn new(param: ParamKind, sorted_labels: Arc<Mutex<BTreeSet<String>>>) -> Self {
+        let root = Param::new(
+            ParamParent::Struct(param.try_into_owned().unwrap()),
+            sorted_labels,
+        );
         Self { root }
     }
 }

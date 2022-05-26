@@ -1,4 +1,6 @@
+use std::collections::BTreeSet;
 use std::env::current_exe;
+use std::sync::{Arc, Mutex};
 
 use prc::hash40::label_map::LabelMap;
 use prc::hash40::Hash40;
@@ -22,6 +24,7 @@ fn main() -> Result<(), error::AppError> {
         .unwrap_or_default()
         .into();
 
+    let mut sorted_labels = BTreeSet::new();
     let label_arc = Hash40::label_map();
     let label_map = label_arc.lock().ok();
     let labels = LabelMap::read_custom_labels("ParamLabels.csv")
@@ -32,11 +35,12 @@ fn main() -> Result<(), error::AppError> {
             })
         });
     if let Some((labels, mut label_map)) = labels.zip(label_map) {
+        sorted_labels = labels.iter().map(|(_, str)| str.to_owned()).collect();
         label_map.strict = true;
         label_map.add_custom_labels(labels.into_iter());
     }
 
-    let mut app = Root::new(param);
+    let mut app = Root::new(param, Arc::new(Mutex::new(sorted_labels)));
 
     tui_components::run(&mut app, Some("prickly - prc file editor".to_string()))?;
     Ok(())
