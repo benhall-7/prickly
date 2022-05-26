@@ -79,8 +79,10 @@ impl HashInput {
                     let prefix_str = self.value.as_str();
                     self.matches = sorted_labels
                         .range(prefix..)
-                        .take(1000) // limit to 100 matches for now
-                        .take_while(|str| str.starts_with(prefix_str))
+                        // remove the exact match
+                        .filter(|str| str.len() > prefix_str.len() && str.starts_with(prefix_str))
+                        // limit to 1000 matches (small prefixes could lead to huge match count)
+                        .take(1000)
                         .map(|str| str.to_owned())
                         .collect();
                     if matches!(status, Validity::LabelNotExists(..)) && !self.matches.is_empty() {
