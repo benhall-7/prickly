@@ -53,9 +53,13 @@ pub enum SelectedParam {
 
 impl Param {
     pub fn new(param: ParamParent, sorted_labels: Arc<Mutex<BTreeSet<String>>>) -> Self {
+        let mut state = TableState::default();
+        if !param.is_empty() {
+            state.select(Some(0));
+        }
         Self {
             param,
-            state: TableState::default(),
+            state,
             selected: None,
             sorted_labels,
         }
@@ -212,6 +216,28 @@ impl Param {
                 (index, spans)
             })
     }
+
+    pub fn recreate_param(&self) -> ParamKind {
+        match &self.param {
+            ParamParent::List(list) => {
+                let mut level = list.clone();
+                let index = self.state.selected();
+                let selected = &self.selected.as_deref();
+                if let Some((SelectedParam::NewLevel(children), index)) = selected.zip(index) {
+                    level.0[index] = children.recreate_param();
+                }
+                level.into()
+            }
+            ParamParent::Struct(str) => {
+                let mut level = str.clone();
+                let index = self.state.selected();
+                let selected = self.selected.as_deref();
+                if let Some((SelectedParam::NewLevel(children), index)) = selected.zip(index) {
+                    level.0[index].1 = children.recreate_param();
+                }
+                level.into()}
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -292,7 +318,7 @@ impl Display for ParentIndex {
 pub enum ParamResponse {
     None,
     Exit,
-    Handled,
+    Handled { edited: bool },
 }
 
 impl<'a> Component for Param {
@@ -307,7 +333,7 @@ impl<'a> Component for Param {
         if let Some(next) = self.next_mut() {
             match next.handle_event(event) {
                 ParamResponse::Exit => self.exit(false),
-                ParamResponse::Handled => {}
+                ParamResponse::Handled { edited } => return ParamResponse::Handled { edited },
                 ParamResponse::None => return ParamResponse::None,
             }
         } else if let Some(selected) = self.selected.as_deref_mut() {
@@ -321,24 +347,33 @@ impl<'a> Component for Param {
                 SelectedParam::Float(val) => val.handle_event(event),
                 SelectedParam::Str(str) => {
                     match str.handle_event(event) {
-                        InputResponse::Submit => self.exit(true),
+                        InputResponse::Submit => {
+                            self.exit(true);
+                            return ParamResponse::Handled { edited: true };
+                        }
                         InputResponse::Cancel => self.exit(false),
                         _ => {}
                     }
-                    return ParamResponse::Handled;
+                    return ParamResponse::Handled { edited: false };
                 }
                 SelectedParam::Hash(hash) => {
                     match hash.handle_event(event) {
-                        HashInputResponse::Submit => self.exit(true),
+                        HashInputResponse::Submit => {
+                            self.exit(true);
+                            return ParamResponse::Handled { edited: true };
+                        }
                         HashInputResponse::Cancel => self.exit(false),
                         _ => {}
                     }
-                    return ParamResponse::Handled;
+                    return ParamResponse::Handled { edited: false };
                 }
                 SelectedParam::NewLevel(_) => unreachable!(),
             };
             match response {
-                NumInputResponse::Submit => self.exit(true),
+                NumInputResponse::Submit => {
+                    self.exit(true);
+                    return ParamResponse::Handled { edited: true };
+                }
                 NumInputResponse::Cancel => self.exit(false),
                 _ => {}
             }
@@ -353,7 +388,7 @@ impl<'a> Component for Param {
                 _ => return ParamResponse::None,
             }
         }
-        ParamResponse::Handled
+        ParamResponse::Handled { edited: false }
     }
 
     fn draw(&mut self, rect: tui_components::tui::layout::Rect, buffer: &mut Buffer) -> Buffer {

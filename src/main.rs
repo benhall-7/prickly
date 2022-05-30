@@ -20,9 +20,7 @@ fn main() -> Result<(), error::AppError> {
 
     let param = args
         .file
-        .map(|path| open(path).unwrap())
-        .unwrap_or_default()
-        .into();
+        .map(|path| open(path).unwrap().into());
 
     let mut sorted_labels = BTreeSet::new();
     let label_arc = Hash40::label_map();
