@@ -23,7 +23,10 @@ impl Component for Empty {
         buffer: &mut tui_components::tui::buffer::Buffer,
     ) -> Self::DrawResponse {
         let mut message = Text::raw("No params loaded. Press\n");
-        message.extend(Text::styled("ctrl + o\n", Style::default().fg(Color::Green)));
+        message.extend(Text::styled(
+            "ctrl + o\n",
+            Style::default().fg(Color::Green),
+        ));
         message.extend(Text::raw("to open a file"));
 
         let uncentered = Rect {
@@ -33,7 +36,7 @@ impl Component for Empty {
             height: message.height() as u16,
         };
         let center = rect.centered(uncentered);
-        
+
         let paragraph = Paragraph::new(message).alignment(Alignment::Center);
         paragraph.render(center, buffer);
     }

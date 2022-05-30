@@ -18,9 +18,7 @@ pub mod utils;
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
 
-    let param = args
-        .file
-        .map(|path| open(path).unwrap().into());
+    let param = args.file.map(|path| open(path).unwrap().into());
 
     let mut sorted_labels = BTreeSet::new();
     let label_arc = Hash40::label_map();

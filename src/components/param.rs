@@ -89,7 +89,7 @@ impl Param {
         }
     }
 
-    fn enter(&mut self) {
+    fn enter(&mut self) -> bool {
         if let Some(selected) = self.state.selected() {
             match self.param.nth_mut(selected) {
                 ParamKind::List(list) => {
@@ -106,6 +106,7 @@ impl Param {
                 }
                 ParamKind::Bool(val) => {
                     *val = !*val;
+                    return true;
                 }
                 ParamKind::I8(int) => {
                     self.selected = Some(Box::new(SelectedParam::I8(SignedIntInput::new(*int))));
@@ -144,6 +145,7 @@ impl Param {
                 }
             }
         }
+        false
     }
 
     /// Removes selection from the current param.
@@ -235,7 +237,8 @@ impl Param {
                 if let Some((SelectedParam::NewLevel(children), index)) = selected.zip(index) {
                     level.0[index].1 = children.recreate_param();
                 }
-                level.into()}
+                level.into()
+            }
         }
     }
 }
@@ -382,7 +385,10 @@ impl<'a> Component for Param {
                 KeyCode::Up => self.up(),
                 KeyCode::Down => self.down(),
                 KeyCode::Enter => {
-                    self.enter();
+                    let enter_result = self.enter();
+                    if enter_result {
+                        return ParamResponse::Handled { edited: true };
+                    }
                 }
                 KeyCode::Backspace => return ParamResponse::Exit,
                 _ => return ParamResponse::None,
