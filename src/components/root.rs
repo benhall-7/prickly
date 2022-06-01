@@ -86,7 +86,7 @@ impl Root {
 }
 
 impl App for Root {
-    fn handle_event(&mut self, event: tui_components::Event) -> tui_components::AppResponse {
+    fn handle_event(&mut self, event: Event) -> AppResponse {
         match &mut self.state {
             State::Empty(EmptyState::View) => {
                 if let Event::Key(key_event) = event {
