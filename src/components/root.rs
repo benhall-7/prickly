@@ -83,6 +83,38 @@ impl Root {
             }
         }
     }
+
+    fn open(&mut self, path: PathBuf) {
+        if let Some(parent) = path.parent() {
+            self.open_dir = parent.to_path_buf();
+        }
+        if let Ok(prc) = prc::open(path) {
+            self.state = State::Normal {
+                param: Param::new(ParamParent::Struct(prc), self.sorted_labels.clone()),
+                edited: false,
+                state: Box::new(NormalState::View),
+            }
+        }
+    }
+
+    fn save(&mut self, path: PathBuf) {
+        if let State::Normal {
+            param,
+            edited,
+            state,
+        } = &mut self.state
+        {
+            if let Some(parent) = path.parent() {
+                self.save_dir = parent.to_path_buf();
+            }
+            let param = param.recreate_param();
+            if prc::save(path, param.try_into_ref().unwrap()).is_ok() {
+                *edited = false;
+            }
+            // TODO: error message in case of failure
+            *state = Box::new(NormalState::View);
+        }
+    }
 }
 
 impl App for Root {
@@ -113,19 +145,7 @@ impl App for Root {
                 }
             }
             State::Empty(EmptyState::Open(open)) => match open.handle_event(event) {
-                ExplorerResponse::Open(path) => {
-                    if let Some(parent) = path.parent() {
-                        self.open_dir = parent.to_path_buf();
-                    }
-                    if let Ok(prc) = prc::open(path) {
-                        self.state = State::Normal {
-                            param: Param::new(ParamParent::Struct(prc), self.sorted_labels.clone()),
-                            edited: false,
-                            state: Box::new(NormalState::View),
-                        }
-                    }
-                    // else, set an error state somehow
-                }
+                ExplorerResponse::Open(path) => self.open(path),
                 ExplorerResponse::Save(_) => {}
                 ExplorerResponse::Cancel => self.state = State::Empty(EmptyState::View),
                 ExplorerResponse::Handled => {}
@@ -185,45 +205,16 @@ impl App for Root {
                     ParamResponse::Exit => {}
                 },
                 NormalState::Open(open) => match open.handle_event(event) {
-                    ExplorerResponse::Open(path) => {
-                        if let Some(parent) = path.parent() {
-                            self.open_dir = parent.to_path_buf();
-                        }
-                        if let Ok(prc) = prc::open(path) {
-                            self.state = State::Normal {
-                                param: Param::new(
-                                    ParamParent::Struct(prc),
-                                    self.sorted_labels.clone(),
-                                ),
-                                edited: false,
-                                state: Box::new(NormalState::View),
-                            }
-                        }
-                        // else, set an error state somehow
-                    }
+                    ExplorerResponse::Open(path) => self.open(path),
+                    ExplorerResponse::Cancel => *state = Box::new(NormalState::View),
                     ExplorerResponse::Save(_) => {}
-                    ExplorerResponse::Cancel => {
-                        *state = Box::new(NormalState::View);
-                    }
                     ExplorerResponse::Handled => {}
                     ExplorerResponse::None => {}
                 },
                 NormalState::Save(save) => match save.handle_event(event) {
+                    ExplorerResponse::Save(path) => self.save(path),
+                    ExplorerResponse::Cancel => *state = Box::new(NormalState::View),
                     ExplorerResponse::Open(_) => {}
-                    ExplorerResponse::Save(path) => {
-                        if let Some(parent) = path.parent() {
-                            self.save_dir = parent.to_path_buf();
-                        }
-                        let param = param.recreate_param();
-                        if prc::save(path, param.try_into_ref().unwrap()).is_ok() {
-                            *edited = false;
-                        }
-                        // TODO: error message in case of failure
-                        *state = Box::new(NormalState::View);
-                    }
-                    ExplorerResponse::Cancel => {
-                        *state = Box::new(NormalState::View);
-                    }
                     ExplorerResponse::Handled => {}
                     ExplorerResponse::None => {}
                 },

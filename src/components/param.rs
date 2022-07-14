@@ -324,7 +324,7 @@ pub enum ParamResponse {
     Handled { edited: bool },
 }
 
-impl<'a> Component for Param {
+impl Component for Param {
     type Response = ParamResponse;
     type DrawResponse = Buffer;
 
