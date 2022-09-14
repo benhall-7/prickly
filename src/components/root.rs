@@ -84,16 +84,20 @@ impl Root {
         }
     }
 
-    fn open(&mut self, path: PathBuf) {
+    fn open(&mut self, path: PathBuf) -> Result<(), std::io::Error> {
         if let Some(parent) = path.parent() {
             self.open_dir = parent.to_path_buf();
         }
-        if let Ok(prc) = prc::open(path) {
-            self.state = State::Normal {
-                param: Param::new(ParamParent::Struct(prc), self.sorted_labels.clone()),
-                edited: false,
-                state: Box::new(NormalState::View),
+        match prc::open(path) {
+            Ok(prc) => {
+                self.state = State::Normal {
+                    param: Param::new(ParamParent::Struct(prc), self.sorted_labels.clone()),
+                    edited: false,
+                    state: Box::new(NormalState::View),
+                };
+                Ok(())
             }
+            Err(err) => Err(err),
         }
     }
 
@@ -145,7 +149,7 @@ impl App for Root {
                 }
             }
             State::Empty(EmptyState::Open(open)) => match open.handle_event(event) {
-                ExplorerResponse::Open(path) => self.open(path),
+                ExplorerResponse::Open(path) => self.open(path).unwrap_or_default(),
                 ExplorerResponse::Save(_) => {}
                 ExplorerResponse::Cancel => self.state = State::Empty(EmptyState::View),
                 ExplorerResponse::Handled => {}
@@ -205,7 +209,7 @@ impl App for Root {
                     ParamResponse::Exit => {}
                 },
                 NormalState::Open(open) => match open.handle_event(event) {
-                    ExplorerResponse::Open(path) => self.open(path),
+                    ExplorerResponse::Open(path) => self.open(path).unwrap_or_default(),
                     ExplorerResponse::Cancel => *state = Box::new(NormalState::View),
                     ExplorerResponse::Save(_) => {}
                     ExplorerResponse::Handled => {}
