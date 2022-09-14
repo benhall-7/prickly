@@ -1,11 +1,11 @@
 [package]
 name = "prickly"
-version = "1.0.1"
+version = "1.0.2"
 authors = ["BenHall-7 <Benjaminjahall@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-tui-components = "0.1.1"
+tui-components = "0.1.2"
 prc-rs = "1.4"
 regex = "1.4"
 structopt = "0.3"

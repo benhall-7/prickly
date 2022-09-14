@@ -88,13 +88,14 @@ impl Root {
         if let Some(parent) = path.parent() {
             self.open_dir = parent.to_path_buf();
         }
-        match prc::open(path) {
+        match prc::open(&path) {
             Ok(prc) => {
                 self.state = State::Normal {
                     param: Param::new(ParamParent::Struct(prc), self.sorted_labels.clone()),
                     edited: false,
                     state: Box::new(NormalState::View),
                 };
+                tui_components::set_title(&path.to_string_lossy())?;
                 Ok(())
             }
             Err(err) => Err(err),

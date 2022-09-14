@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "prickly"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "itertools",
  "num",
@@ -587,9 +587,9 @@ dependencies = [
 
 [[package]]
 name = "tui-components"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c40f8d010f5931300d7ec8e31e1c8703b314e7b1ba4f8f9551b9d5e87bb65c"
+checksum = "3a1b6223054d5a2f265112fcb8e38bfc981180ff9199f7fe4229921348ae46db"
 dependencies = [
  "crossterm",
  "num",

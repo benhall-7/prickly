@@ -18,7 +18,7 @@ pub mod utils;
 fn main() -> Result<(), error::AppError> {
     let args = args::Args::from_args();
 
-    let param = args.file.map(|path| open(path).unwrap().into());
+    let param = args.file.as_ref().map(|path| open(path).unwrap().into());
 
     let mut sorted_labels = BTreeSet::new();
     let label_arc = Hash40::label_map();
@@ -38,6 +38,10 @@ fn main() -> Result<(), error::AppError> {
 
     let mut app = Root::new(param, Arc::new(Mutex::new(sorted_labels)));
 
-    tui_components::run(&mut app, Some("prickly - prc file editor".to_string()))?;
+    let title = match &args.file {
+        Some(path) => format!("prickly - {}", path),
+        None => "prickly - prc file editor".to_string(),
+    };
+    tui_components::run(&mut app, Some(title))?;
     Ok(())
 }
